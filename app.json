@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.fadyfayezdev.Savvi"
     },
     "web": {
       "output": "static",
@@ -27,6 +28,15 @@
     },
     "plugins": [
       "expo-router",
+      "expo-localization",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Savvi to use biometric authentication."
+        }
+      ],
+      "expo-secure-store",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
@@ -43,6 +53,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1bc0edf9-d931-4f71-876d-fece8e72e17e"
+      }
     }
   }
 }

@@ -1,0 +1,84 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات",
+    "search": "بحث",
+    "import": "استيراد",
+    "export": "تصدير"
+  },
+  "tabs": {
+    "dashboard": "الرئيسية",
+    "goals": "التحويش",
+    "months": "الشهور",
+    "settings": "الإعدادات"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "monthlyExpense": "مصاريف الشهر",
+    "monthlyIncome": "دخل الشهر",
+    "netResult": "صافي النتيجة",
+    "topExpenseCategory": "أعلى فئة صرف",
+    "balance": "الرصيد",
+    "last14Days": "مقارنة آخر 14 يوم",
+    "dailyAverage": "متوسط يومي",
+    "savingsComparison": "مقارنة التحويش",
+    "currentMonthSaving": "تحويش الشهر الحالي",
+    "previousMonthSaving": "تحويش الشهر السابق",
+    "totalSaving": "إجمالي التحويش",
+    "nearestGoal": "أقرب هدف للإنجاز",
+    "quickAdd": "إضافة سريعة",
+    "addIncome": "إضافة دخل",
+    "addExpense": "إضافة مصروف",
+    "recentTransactions": "آخر العمليات",
+    "allKinds": "الكل",
+    "income": "دخل",
+    "expense": "مصروف"
+  },
+  "goals": {
+    "title": "أهداف التحويش",
+    "newGoal": "هدف جديد",
+    "goalName": "اسم الهدف",
+    "targetAmount": "المبلغ المستهدف",
+    "saved": "المتحوش",
+    "remaining": "المتبقي",
+    "transferAmount": "مبلغ التحويل",
+    "transfer": "تحويل",
+    "cancelGoal": "إلغاء الهدف",
+    "updateGoal": "تعديل الهدف",
+    "history": "سجل التحويلات"
+  },
+  "months": {
+    "title": "تقارير الشهور",
+    "incomeTotal": "إجمالي الدخل",
+    "expenseTotal": "إجمالي المصاريف",
+    "net": "الصافي",
+    "topIncomeCategory": "أعلى فئة دخل",
+    "topExpenseCategory": "أعلى فئة صرف",
+    "highestSpendDay": "أكثر يوم صرف"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "language": "اللغة",
+    "theme": "المظهر",
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "تلقائي",
+    "lockMethod": "طريقة القفل",
+    "none": "بدون",
+    "pin": "PIN",
+    "biometric": "بصمة",
+    "setPin": "تعيين PIN",
+    "resetPin": "إزالة PIN",
+    "autoLockSeconds": "مهلة القفل (ثانية)",
+    "backup": "النسخ الاحتياطي",
+    "importReplace": "استيراد واستبدال البيانات"
+  },
+  "errors": {
+    "generic": "حدث خطأ غير متوقع",
+    "insufficientBalance": "الرصيد غير كافٍ",
+    "goalNotActive": "الهدف غير نشط",
+    "invalidBackup": "ملف النسخة الاحتياطية غير صالح"
+  }
+}

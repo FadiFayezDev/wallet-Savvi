@@ -1,0 +1,84 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "search": "Search",
+    "import": "Import",
+    "export": "Export"
+  },
+  "tabs": {
+    "dashboard": "Dashboard",
+    "goals": "Goals",
+    "months": "Months",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "monthlyExpense": "Month Expense",
+    "monthlyIncome": "Month Income",
+    "netResult": "Net Result",
+    "topExpenseCategory": "Top Expense Category",
+    "balance": "Balance",
+    "last14Days": "Last 14 Days",
+    "dailyAverage": "Daily Average",
+    "savingsComparison": "Savings Comparison",
+    "currentMonthSaving": "Current Month Saving",
+    "previousMonthSaving": "Previous Month Saving",
+    "totalSaving": "Total Savings",
+    "nearestGoal": "Nearest Goal",
+    "quickAdd": "Quick Add",
+    "addIncome": "Add Income",
+    "addExpense": "Add Expense",
+    "recentTransactions": "Recent Transactions",
+    "allKinds": "All",
+    "income": "Income",
+    "expense": "Expense"
+  },
+  "goals": {
+    "title": "Savings Goals",
+    "newGoal": "New Goal",
+    "goalName": "Goal Name",
+    "targetAmount": "Target Amount",
+    "saved": "Saved",
+    "remaining": "Remaining",
+    "transferAmount": "Transfer Amount",
+    "transfer": "Transfer",
+    "cancelGoal": "Cancel Goal",
+    "updateGoal": "Update Goal",
+    "history": "Transfers History"
+  },
+  "months": {
+    "title": "Monthly Reports",
+    "incomeTotal": "Total Income",
+    "expenseTotal": "Total Expense",
+    "net": "Net Result",
+    "topIncomeCategory": "Top Income Category",
+    "topExpenseCategory": "Top Expense Category",
+    "highestSpendDay": "Highest Spend Day"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "lockMethod": "Lock Method",
+    "none": "None",
+    "pin": "PIN",
+    "biometric": "Biometric",
+    "setPin": "Set PIN",
+    "resetPin": "Reset PIN",
+    "autoLockSeconds": "Auto lock seconds",
+    "backup": "Backup",
+    "importReplace": "Import and Replace"
+  },
+  "errors": {
+    "generic": "Unexpected error happened",
+    "insufficientBalance": "Insufficient balance",
+    "goalNotActive": "Goal is not active",
+    "invalidBackup": "Invalid backup file"
+  }
+}
