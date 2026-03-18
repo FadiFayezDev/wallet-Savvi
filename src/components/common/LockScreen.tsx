@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { useAppStore } from '@/src/stores/appStore';
@@ -11,6 +11,14 @@ export function LockScreen() {
   const unlockWithPin = useAppStore((state) => state.unlockWithPin);
   const unlockWithBiometric = useAppStore((state) => state.unlockWithBiometric);
   const lockMethod = useSettingsStore((state) => state.settings?.lockMethod ?? 'none');
+  const didPromptRef = useRef(false);
+
+  useEffect(() => {
+    if (lockMethod !== 'biometric') return;
+    if (didPromptRef.current) return;
+    didPromptRef.current = true;
+    unlockWithBiometric().catch(() => undefined);
+  }, [lockMethod, unlockWithBiometric]);
 
   const onUnlockPin = async () => {
     const ok = await unlockWithPin(pin);
@@ -53,9 +61,7 @@ export function LockScreen() {
         {lockMethod === 'biometric' && (
           <Pressable
             onPress={() => {
-              unlockWithBiometric().catch(() => {
-                Alert.alert('Biometric failed');
-              });
+              unlockWithBiometric().catch(() => undefined);
             }}
             className="mt-3 rounded-xl bg-slate-700 py-3">
             <Text className="text-center font-semibold text-white">Unlock with Biometric</Text>

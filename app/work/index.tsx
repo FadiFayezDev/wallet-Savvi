@@ -195,6 +195,19 @@ export default function WorkScreen() {
     }
   };
 
+  const onDeleteLog = async (log: WorkDayLog) => {
+    const ok = await confirmAction({
+      title: isAr ? "حذف السجل؟" : "Delete log?",
+      message: isAr ? "سيتم حذف هذا السجل وإلغاء خصم مصاريفه إن وجدت." : "This log will be removed and its expense reversed if possible.",
+      confirmText: isAr ? "حذف" : "Delete",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+      destructive: true,
+    });
+    if (!ok) return;
+    await workService.removeWorkLog(log.id);
+    await load();
+  };
+
   const sectionTabs: { key: SectionKey; label: string }[] = [
     { key: "today", label: isAr ? "اليوم" : "Today" },
     { key: "schedule", label: isAr ? "الجدول" : "Schedule" },
@@ -624,6 +637,12 @@ export default function WorkScreen() {
                           : formatMoney(row.totalWorkExpenses, localeKey, currency)}
                       </Text>
                     </View>
+                    <Pressable
+                      onPress={() => onDeleteLog(row)}
+                      style={[styles.deleteBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+                    >
+                      <IconButton icon="trash-can-outline" iconColor={theme.colors.error} size={16} style={styles.noMargin} />
+                    </Pressable>
                   </View>
                 ))}
               </View>
@@ -740,5 +759,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     gap: 10,
+  },
+  deleteBtn: {
+    borderRadius: 999,
+    overflow: "hidden",
   },
 });

@@ -5,8 +5,8 @@ import {
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -23,6 +23,7 @@ try {
 } catch (e) {}
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { LockScreen } from "@/src/components/common/LockScreen";
 import { useAppStore } from "@/src/stores/appStore";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import "react-native-reanimated";
@@ -41,6 +42,12 @@ export default function RootLayout() {
   const [systemPalette, setSystemPalette] = useState<any | null>(null);
   const bootstrap = useAppStore((state) => state.bootstrap);
   const isReady = useAppStore((state) => state.isReady);
+  const isLocked = useAppStore((state) => state.isLocked);
+  const lock = useAppStore((state) => state.lock);
+  const unlock = useAppStore((state) => state.unlock);
+  const lockMethod = useSettingsStore((state) => state.settings?.lockMethod ?? "none");
+  const autoLockSeconds = useSettingsStore((state) => state.settings?.autoLockSeconds ?? 30);
+  const backgroundAt = useRef<number | null>(null);
 
   useEffect(() => {
     loadSettings().catch(() => undefined);
@@ -65,6 +72,35 @@ export default function RootLayout() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (lockMethod === "none") {
+      unlock();
+    } else {
+      lock();
+    }
+  }, [lockMethod, lock, unlock]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") {
+        backgroundAt.current = Date.now();
+        return;
+      }
+      if (state === "active") {
+        if (lockMethod === "none") {
+          unlock();
+          return;
+        }
+        if (backgroundAt.current == null) return;
+        const elapsedMs = Date.now() - backgroundAt.current;
+        if (autoLockSeconds <= 0 || elapsedMs >= autoLockSeconds * 1000) {
+          lock();
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [autoLockSeconds, lock, lockMethod, unlock]);
 
   const resolvedThemeMode = useMemo(() => {
     if (!settings) return "dark";
@@ -240,6 +276,7 @@ export default function RootLayout() {
                 <Stack.Screen name="work/index" />
                 <Stack.Screen name="reports/current" />
               </Stack>
+              {isLocked && lockMethod !== "none" ? <LockScreen /> : null}
             </SafeAreaView>
             <StatusBar style={resolvedThemeMode === "dark" ? "light" : "dark"} />
           </ThemeProvider>

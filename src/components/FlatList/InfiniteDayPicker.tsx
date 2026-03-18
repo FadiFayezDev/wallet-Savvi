@@ -12,7 +12,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const ITEM_WIDTH    = Math.floor(SCREEN_WIDTH / 7); // 4 أيام ظاهرين في نفس الوقت
+const ITEM_WIDTH    = Math.floor(SCREEN_WIDTH / 6); // 4 أيام ظاهرين في نفس الوقت
 const INITIAL_INDEX = 365;
 const TOTAL_DAYS    = 730;
 

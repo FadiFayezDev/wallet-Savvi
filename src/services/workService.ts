@@ -152,6 +152,33 @@ export const workService = {
     });
   },
 
+  async removeWorkLog(id: number) {
+    const log = await getFirst<any>(
+      'SELECT * FROM work_days_log WHERE id = ? LIMIT 1;',
+      [id]
+    );
+    if (!log) return { success: false, status: 'not_found' };
+
+    const tx = await getFirst<{ id: number }>(
+      `SELECT id FROM transactions
+       WHERE is_deleted = 0
+         AND kind = 'work_expense'
+         AND date(occurred_at) = date(?)
+         AND amount_abs = ?
+         AND source = 'system'
+       ORDER BY id DESC
+       LIMIT 1;`,
+      [log.work_date, log.total_work_expenses ?? 0]
+    );
+
+    if (tx?.id) {
+      await transactionService.cancelTransaction(tx.id, 'Work log removed');
+    }
+
+    await runQuery('DELETE FROM work_days_log WHERE id = ?;', [id]);
+    return { success: true, removedTransaction: Boolean(tx?.id) };
+  },
+
   /**
    * إدارة جدول المواعيد (Schedule)
    */

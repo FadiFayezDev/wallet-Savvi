@@ -42,26 +42,6 @@ function SettingSection({
   );
 }
 
-// ── Chip اختيار ──────────────────────────────────────────────────
-function OptionChip({
-  label, active, onPress, danger,
-}: {
-  label: string; active: boolean; onPress: () => void; danger?: boolean;
-}) {
-  const theme = useTheme();
-  const bg    = active
-    ? (danger ? theme.colors.error : theme.colors.primary)
-    : theme.colors.surfaceVariant;
-  const fg    = active
-    ? (danger ? theme.colors.onError : theme.colors.onPrimary)
-    : theme.colors.onSurfaceVariant;
-  return (
-    <Pressable onPress={onPress} style={[styles.chip, { backgroundColor: bg }]}>
-      <Text style={[styles.chipText, { color: fg }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 // ── زر أكشن ─────────────────────────────────────────────────────
 function ActionButton({
   label, icon, onPress, disabled, variant = 'primary',
@@ -96,6 +76,78 @@ function ActionButton({
   );
 }
 
+// ── قائمة منسدلة ────────────────────────────────────────────────
+function SelectDropdown({
+  valueLabel,
+  options,
+  selectedKey,
+  isOpen,
+  onToggle,
+  onSelect,
+}: {
+  valueLabel: string;
+  options: { key: string; label: string }[];
+  selectedKey: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (key: string) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View>
+      <Pressable
+        onPress={onToggle}
+        style={[
+          styles.dropdownTrigger,
+          { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outlineVariant },
+        ]}
+      >
+        <Text style={[styles.dropdownValue, { color: theme.colors.onSurface }]}>{valueLabel}</Text>
+        <IconButton
+          icon={isOpen ? 'chevron-up' : 'chevron-down'}
+          iconColor={theme.colors.onSurfaceVariant}
+          size={18}
+          style={styles.noMargin}
+        />
+      </Pressable>
+      {isOpen ? (
+        <View
+          style={[
+            styles.dropdownList,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+          ]}
+        >
+          {options.map((opt) => {
+            const active = opt.key === selectedKey;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => onSelect(opt.key)}
+                style={[
+                  styles.dropdownOption,
+                  active && { backgroundColor: `${theme.colors.primary}18`, borderColor: theme.colors.primary },
+                ]}
+              >
+                <Text style={[styles.dropdownOptionText, { color: theme.colors.onSurface }]}>
+                  {opt.label}
+                </Text>
+                {active ? (
+                  <IconButton
+                    icon="check"
+                    iconColor={theme.colors.primary}
+                    size={16}
+                    style={styles.noMargin}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 // ── الشاشة ───────────────────────────────────────────────────────
 const lockMethods:  ('none' | 'pin' | 'biometric')[]    = ['none', 'pin', 'biometric'];
 const themeModes:   ('light' | 'dark' | 'system')[]     = ['light', 'dark', 'system'];
@@ -111,6 +163,7 @@ export default function SettingsTab() {
   const [busy,            setBusy]            = useState(false);
   const [dailyLimitInput, setDailyLimitInput] = useState('');
   const [savingLimit,     setSavingLimit]     = useState(false);
+  const [openSelect,      setOpenSelect]      = useState<null | 'locale' | 'theme' | 'themeSource' | 'timeFormat' | 'lockMethod'>(null);
 
   useEffect(() => {
     if (!settings) loadSettings().catch(() => undefined);
@@ -132,6 +185,15 @@ export default function SettingsTab() {
   const isAr             = settings.locale === 'ar';
   const themeSourceValue = settings.themeSource ?? 'material';
   const timeFormatValue  = settings.timeFormat  ?? '24h';
+  const selectedLocaleLabel = settings.locale === 'ar' ? 'العربية' : 'English';
+  const selectedThemeLabel = t(`settings.${settings.themeMode}`);
+  const selectedThemeSourceLabel = themeSourceValue === 'material' ? 'Material You' : (isAr ? 'ثابت' : 'Fixed');
+  const selectedTimeFormatLabel = timeFormatValue === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h');
+  const selectedLockLabel = t(`settings.${settings.lockMethod}`);
+
+  const toggleSelect = (key: typeof openSelect) => {
+    setOpenSelect((prev) => (prev === key ? null : key));
+  };
 
   const saveLimit = async (clear = false) => {
     if (!clear) {
@@ -165,30 +227,39 @@ export default function SettingsTab() {
 
       {/* ── اللغة ── */}
       <SettingSection icon="translate" title={t('settings.language')}>
-        <View style={styles.chips}>
-          {locales.map((locale) => (
-            <OptionChip
-              key={locale}
-              label={locale === 'ar' ? 'العربية' : 'English'}
-              active={settings.locale === locale}
-              onPress={async () => { await patchSettings({ locale }); await i18n.changeLanguage(locale); }}
-            />
-          ))}
-        </View>
+        <SelectDropdown
+          valueLabel={selectedLocaleLabel}
+          selectedKey={settings.locale}
+          isOpen={openSelect === 'locale'}
+          onToggle={() => toggleSelect('locale')}
+          onSelect={async (locale) => {
+            await patchSettings({ locale: locale as 'ar' | 'en' });
+            await i18n.changeLanguage(locale);
+            setOpenSelect(null);
+          }}
+          options={locales.map((locale) => ({
+            key: locale,
+            label: locale === 'ar' ? 'العربية' : 'English',
+          }))}
+        />
       </SettingSection>
 
       {/* ── الثيم ── */}
       <SettingSection icon="palette-outline" title={t('settings.theme')}>
-        <View style={styles.chips}>
-          {themeModes.map((mode) => (
-            <OptionChip
-              key={mode}
-              label={t(`settings.${mode}`)}
-              active={settings.themeMode === mode}
-              onPress={() => patchSettings({ themeMode: mode })}
-            />
-          ))}
-        </View>
+        <SelectDropdown
+          valueLabel={selectedThemeLabel}
+          selectedKey={settings.themeMode}
+          isOpen={openSelect === 'theme'}
+          onToggle={() => toggleSelect('theme')}
+          onSelect={(mode) => {
+            patchSettings({ themeMode: mode as 'light' | 'dark' | 'system' }).catch(() => undefined);
+            setOpenSelect(null);
+          }}
+          options={themeModes.map((mode) => ({
+            key: mode,
+            label: t(`settings.${mode}`),
+          }))}
+        />
       </SettingSection>
 
       {/* ── مصدر الثيم ── */}
@@ -197,16 +268,20 @@ export default function SettingsTab() {
         title={isAr ? 'مصدر الثيم' : 'Theme Source'}
         subtitle={isAr ? 'Material You أو ثيم ثابت' : 'Dynamic Material You or fixed theme'}
       >
-        <View style={styles.chips}>
-          {themeSources.map((source) => (
-            <OptionChip
-              key={source}
-              label={source === 'material' ? 'Material You' : (isAr ? 'ثابت' : 'Fixed')}
-              active={themeSourceValue === source}
-              onPress={() => patchSettings({ themeSource: source })}
-            />
-          ))}
-        </View>
+        <SelectDropdown
+          valueLabel={selectedThemeSourceLabel}
+          selectedKey={themeSourceValue}
+          isOpen={openSelect === 'themeSource'}
+          onToggle={() => toggleSelect('themeSource')}
+          onSelect={(source) => {
+            patchSettings({ themeSource: source as 'material' | 'fixed' }).catch(() => undefined);
+            setOpenSelect(null);
+          }}
+          options={themeSources.map((source) => ({
+            key: source,
+            label: source === 'material' ? 'Material You' : (isAr ? 'ثابت' : 'Fixed'),
+          }))}
+        />
       </SettingSection>
 
       {/* ── تنسيق الوقت ── */}
@@ -215,16 +290,20 @@ export default function SettingsTab() {
         title={isAr ? 'تنسيق الوقت' : 'Time Format'}
         subtitle={isAr ? '12 ساعة أو 24 ساعة' : '12-hour or 24-hour clock'}
       >
-        <View style={styles.chips}>
-          {timeFormats.map((fmt) => (
-            <OptionChip
-              key={fmt}
-              label={fmt === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h')}
-              active={timeFormatValue === fmt}
-              onPress={() => patchSettings({ timeFormat: fmt })}
-            />
-          ))}
-        </View>
+        <SelectDropdown
+          valueLabel={selectedTimeFormatLabel}
+          selectedKey={timeFormatValue}
+          isOpen={openSelect === 'timeFormat'}
+          onToggle={() => toggleSelect('timeFormat')}
+          onSelect={(fmt) => {
+            patchSettings({ timeFormat: fmt as '12h' | '24h' }).catch(() => undefined);
+            setOpenSelect(null);
+          }}
+          options={timeFormats.map((fmt) => ({
+            key: fmt,
+            label: fmt === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h'),
+          }))}
+        />
       </SettingSection>
 
       {/* ── حد المصروف ── */}
@@ -260,26 +339,28 @@ export default function SettingsTab() {
 
       {/* ── الأمان ── */}
       <SettingSection icon="shield-lock-outline" title={t('settings.lockMethod')}>
-        <View style={styles.chips}>
-          {lockMethods.map((method) => (
-            <OptionChip
-              key={method}
-              label={t(`settings.${method}`)}
-              active={settings.lockMethod === method}
-              onPress={async () => {
-                if (method === 'pin') {
-                  const hasPin = await securityService.hasPin();
-                  if (!hasPin) { Alert.alert(isAr ? 'احفظ الـ PIN أولاً' : 'Set a PIN first'); return; }
-                }
-                if (method === 'biometric') {
-                  const canUse = await securityService.canUseBiometric();
-                  if (!canUse) { Alert.alert(isAr ? 'البصمة غير متاحة' : 'Biometric unavailable'); return; }
-                }
-                await patchSettings({ lockMethod: method });
-              }}
-            />
-          ))}
-        </View>
+        <SelectDropdown
+          valueLabel={selectedLockLabel}
+          selectedKey={settings.lockMethod}
+          isOpen={openSelect === 'lockMethod'}
+          onToggle={() => toggleSelect('lockMethod')}
+          onSelect={async (method) => {
+            if (method === 'pin') {
+              const hasPin = await securityService.hasPin();
+              if (!hasPin) { Alert.alert(isAr ? 'احفظ الـ PIN أولاً' : 'Set a PIN first'); return; }
+            }
+            if (method === 'biometric') {
+              const canUse = await securityService.canUseBiometric();
+              if (!canUse) { Alert.alert(isAr ? 'البصمة غير متاحة' : 'Biometric unavailable'); return; }
+            }
+            await patchSettings({ lockMethod: method as 'none' | 'pin' | 'biometric' });
+            setOpenSelect(null);
+          }}
+          options={lockMethods.map((method) => ({
+            key: method,
+            label: t(`settings.${method}`),
+          }))}
+        />
 
         {/* PIN */}
         <View style={[styles.pinWrap, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outlineVariant }]}>
@@ -318,6 +399,7 @@ export default function SettingsTab() {
               });
               if (!ok) return;
               await securityService.clearPin();
+              await patchSettings({ lockMethod: 'none' });
               setPin('');
               Alert.alert(isAr ? 'تم حذف الـ PIN' : 'PIN removed');
             }}
@@ -389,8 +471,6 @@ const styles = StyleSheet.create({
 
   // chips row
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip:  { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
-  chipText: { fontSize: 13, fontWeight: '700' },
 
   // action button
   actionBtn: {
@@ -407,4 +487,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, gap: 4,
   },
   pinInput: { flex: 1, paddingVertical: 12, fontSize: 14 },
+
+  // dropdown
+  dropdownTrigger: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  dropdownValue: { fontSize: 14, fontWeight: '700' },
+  dropdownList: {
+    borderRadius: 14, borderWidth: 1,
+    padding: 6, marginTop: 8, gap: 6,
+  },
+  dropdownOption: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: 'transparent',
+  },
+  dropdownOptionText: { fontSize: 13, fontWeight: '700' },
 });

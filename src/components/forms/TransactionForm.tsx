@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
+import { useIsFocused } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 import { categoryService } from '@/src/services/categoryService';
 import type { Category, TransactionKind } from '@/src/types/domain';
@@ -15,6 +17,8 @@ interface TransactionFormProps {
 export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionFormProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
+  const router = useRouter();
+  const isFocused = useIsFocused();
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
@@ -29,6 +33,7 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
   const onAccentColor = isIncome ? theme.colors.onPrimary : theme.colors.onError;
 
   useEffect(() => {
+    if (!isFocused) return;
     categoryService
       .listCategories(kind)
       .then((rows) => {
@@ -38,7 +43,7 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
         }
       })
       .catch(() => setCategories([]));
-  }, [kind]);
+  }, [kind, isFocused]);
 
   const parsedAmount = useMemo(() => Number(amount), [amount]);
 
@@ -129,6 +134,21 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
       {/* Category Chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -8 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={() => router.push({ pathname: '/(tabs)/categories', params: { tab: kind } })}
+            style={{
+              borderRadius: 100,
+              borderWidth: 1,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderColor: theme.colors.outlineVariant,
+              backgroundColor: theme.colors.surfaceVariant,
+            }}
+          >
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>
+              {locale === 'ar' ? '+ إضافة فئة' : '+ Add category'}
+            </Text>
+          </Pressable>
           {categories.map((category) => {
             const selected = selectedCategory === category.id;
             const title = locale === 'ar' ? category.nameAr : category.nameEn;

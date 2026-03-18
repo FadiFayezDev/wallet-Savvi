@@ -69,7 +69,7 @@ export default function DashboardScreen() {
   const isFocused = useIsFocused();
   const router    = useRouter();
   const theme     = useTheme();
-  const headerHeight = useRef(new Animated.Value(360)).current;
+  const headerHeight = useRef(new Animated.Value(310)).current;
   const detailsOpacity = useRef(new Animated.Value(1)).current;
   const detailsTranslate = useRef(new Animated.Value(0)).current;
   const isCollapsedRef = useRef(false);
@@ -222,7 +222,7 @@ export default function DashboardScreen() {
 
   const collapseHeader = useCallback(() => {
     Animated.parallel([
-      Animated.spring(headerHeight, { toValue: 200, useNativeDriver: false, tension: 120, friction: 14 }),
+      Animated.spring(headerHeight, { toValue: 140, useNativeDriver: false, tension: 120, friction: 14 }),
       Animated.timing(detailsOpacity, { toValue: 0, duration: 180, useNativeDriver: false }),
       Animated.timing(detailsTranslate, { toValue: -12, duration: 180, useNativeDriver: false }),
     ]).start();
@@ -230,7 +230,7 @@ export default function DashboardScreen() {
 
   const expandHeader = useCallback(() => {
     Animated.parallel([
-      Animated.spring(headerHeight, { toValue: 360, useNativeDriver: false, tension: 110, friction: 12 }),
+      Animated.spring(headerHeight, { toValue: 310, useNativeDriver: false, tension: 110, friction: 12 }),
       Animated.timing(detailsOpacity, { toValue: 1, duration: 220, useNativeDriver: false }),
       Animated.timing(detailsTranslate, { toValue: 0, duration: 220, useNativeDriver: false }),
     ]).start();
@@ -258,7 +258,7 @@ export default function DashboardScreen() {
             colors={["#1a0533", "#2d1060", "#1e3a8a"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.header, { paddingTop: 16, flex: 1 }]}
+            style={[styles.header, { paddingTop: 12, flex: 1 }]}
           >
           {/* شريط التحكم */}
           <View style={styles.headerBar}>
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 48,
-    paddingBottom: 20,
+    paddingBottom: 8,
     gap: 14,
     // تأثير shadow تحت الهيدر
     shadowColor: "#1a0533",

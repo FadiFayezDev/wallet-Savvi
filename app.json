@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Savvi",
-    "slug": "Savvi",
+    "name": "Wallet",
+    "slug": "wallet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "savvi",
+    "scheme": "wallet",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -32,7 +32,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Savvi to use biometric authentication."
+          "faceIDPermission": "Allow Wallet to use biometric authentication."
         }
       ],
       "expo-secure-store",

@@ -41,7 +41,7 @@ export default function BillsScreen() {
     setLoading(true);
     try {
       const [categoryRows, allBills, pending, instances] = await Promise.all([
-        categoryService.listCategories(),
+        categoryService.listCategories("expense"),
         recurringBillService.getAllBills(true),
         recurringBillService.getPendingBills(monthKey),
         recurringBillService.listBillInstancesForMonth(monthKey),
@@ -206,6 +206,19 @@ export default function BillsScreen() {
           {locale === "ar" ? "اختر الفئة (اختياري)" : "Pick category (optional)"}
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+          <Pressable
+            onPress={() => router.push({ pathname: "/(tabs)/categories", params: { tab: "expense" } })}
+            style={{
+              borderRadius: 100,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              backgroundColor: theme.colors.surfaceVariant,
+            }}
+          >
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>
+              {locale === "ar" ? "+ إضافة فئة" : "+ Add category"}
+            </Text>
+          </Pressable>
           {categories.map((category) => (
             <Pressable
               key={category.id}

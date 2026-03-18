@@ -2,23 +2,44 @@ import { create } from 'zustand';
 import { getAll, getFirst, runInTransaction, runQuery } from '@/src/db/client';
 import { nowIso } from '@/src/utils/date';
 import { initI18n } from '@/src/i18n';
+import { securityService } from '@/src/services/securityService';
 import { settingsService } from '@/src/services/settingsService';
 
 // ─── App-level store ──────────────────────────────────────────────────────────
 
 interface AppState {
   isReady: boolean;
+  isLocked: boolean;
   theme: 'light' | 'dark' | 'system';
   setReady: (ready: boolean) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  lock: () => void;
+  unlock: () => void;
+  unlockWithPin: (pin: string) => Promise<boolean>;
+  unlockWithBiometric: () => Promise<boolean>;
   bootstrap: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
   isReady: false,
+  isLocked: false,
   theme: 'system',
   setReady: (ready) => set({ isReady: ready }),
   setTheme: (theme) => set({ theme }),
+  lock: () => set({ isLocked: true }),
+  unlock: () => set({ isLocked: false }),
+
+  unlockWithPin: async (pin: string) => {
+    const ok = await securityService.verifyPin(pin);
+    if (ok) set({ isLocked: false });
+    return ok;
+  },
+
+  unlockWithBiometric: async () => {
+    const ok = await securityService.authenticateBiometric();
+    if (ok) set({ isLocked: false });
+    return ok;
+  },
 
   bootstrap: async () => {
     try {

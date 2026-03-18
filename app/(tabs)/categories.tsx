@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Animated, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { IconButton, useTheme } from 'react-native-paper';
 
 import { EmptyState } from '@/src/components/common/EmptyState';
@@ -92,6 +92,7 @@ function CategoryCard({
 
 // ── الشاشة الرئيسية ──────────────────────────────────────────────
 export default function CategoriesTabScreen() {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const settings = useSettingsStore((s) => s.settings);
   const locale   = settings?.locale ?? 'ar';
   const theme    = useTheme();
@@ -170,6 +171,12 @@ export default function CategoriesTabScreen() {
 
   // ── Animated tab indicator ──
   const indicatorLeft = tabAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '50%'] });
+
+  useEffect(() => {
+    const requested = params?.tab === 'income' || params?.tab === 'expense' ? params.tab : null;
+    if (!requested || requested === activeTab) return;
+    switchTab(requested);
+  }, [params?.tab, activeTab]);
 
   return (
     <ScrollView
