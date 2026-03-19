@@ -6,6 +6,7 @@ import { useTheme } from 'react-native-paper';
 
 import { categoryService } from '@/src/services/categoryService';
 import { transactionService } from '@/src/services/transactionService';
+import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Category, Transaction } from '@/src/types/domain';
 import { confirmAction } from '@/src/utils/confirm';
 
@@ -14,6 +15,7 @@ export default function EditTransactionScreen() {
   const router = useRouter();
   const theme = useTheme();
   const transactionId = Number(params.id);
+  const locale = useSettingsStore((s) => s.settings?.locale ?? 'ar');
 
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [amount, setAmount] = useState('');
@@ -67,14 +69,19 @@ export default function EditTransactionScreen() {
 
   const onDelete = async () => {
     const ok = await confirmAction({
-      title: 'Delete transaction?',
-      message: 'This will remove the transaction from your history.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: locale === 'ar' ? 'حذف العملية؟' : 'Delete transaction?',
+      message: locale === 'ar'
+        ? 'سيتم إلغاء العملية واسترجاع الرصيد.'
+        : 'The transaction will be cancelled and refunded.',
+      confirmText: locale === 'ar' ? 'حذف' : 'Delete',
+      cancelText: locale === 'ar' ? 'إلغاء' : 'Cancel',
       destructive: true,
     });
     if (!ok) return;
-    await transactionService.softDeleteTransaction(transaction.id);
+    await transactionService.cancelTransaction(
+      transaction.id,
+      locale === 'ar' ? 'إلغاء العملية' : 'Transaction cancelled'
+    );
     router.back();
   };
 

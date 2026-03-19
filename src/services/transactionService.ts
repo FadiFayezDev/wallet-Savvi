@@ -154,12 +154,6 @@ export const transactionService = {
       if (!current || current.isDeleted) throw new Error('Transaction not found');
 
       const now = nowIso();
-      // Reverse the balance: subtract the signedAmount that was added
-      const currentBalance = await settingsService.getBalance();
-      const newBalance = currentBalance - current.signedAmount;
-      
-      await settingsService.updateBalance(newBalance, db);
-
       await runQuery(
         `UPDATE transactions 
          SET is_deleted = 1, cancel_reason = ?, cancelled_at = ?, updated_at = ? 
@@ -167,6 +161,20 @@ export const transactionService = {
         [reason, now, now, id],
         db
       );
+
+      const reversalKind: TransactionKind = current.signedAmount < 0 ? 'income' : 'expense';
+      const originalLabel = current.note ? current.note : `${current.kind} #${current.id}`;
+      const reversalNote = reason
+        ? `${reason} (${originalLabel})`
+        : `Reversal (${originalLabel})`;
+
+      await transactionService.createSystemTransaction({
+        kind: reversalKind,
+        amount: current.amountAbs,
+        categoryId: null,
+        note: reversalNote,
+        occurredAt: nowIso(),
+      }, db);
 
       // Re-calculate daily summary for the day of the cancelled transaction
       if (['expense', 'bill_payment', 'work_expense'].includes(current.kind)) {
@@ -224,8 +232,8 @@ export const transactionService = {
   },
 
   async softDeleteTransaction(id: number) {
-    // Prefer cancelTransaction to handle balance accurately
-    await runQuery('UPDATE transactions SET is_deleted = 1, updated_at = ? WHERE id = ?;', [nowIso(), id]);
+    // Keep backward compatibility but route to cancel flow
+    await this.cancelTransaction(id, 'Transaction cancelled');
   },
 
   async getBalance() {
