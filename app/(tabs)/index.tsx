@@ -14,6 +14,7 @@ import {
 import { FAB, IconButton, Portal, Surface, useTheme } from "react-native-paper";
 
 import InfiniteDayPicker from "@/src/components/FlatList/InfiniteDayPicker";
+import { AnimatedBalanceText } from "@/src/components/common/AnimatedBalanceText";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { transactionService } from "@/src/services/transactionService";
 import { workService } from "@/src/services/workService";
@@ -65,6 +66,7 @@ export default function DashboardScreen() {
   const [dayPaidBillTotal, setDayPaidBillTotal] = useState(0);
   const [dayWorkLog, setDayWorkLog] = useState<WorkDayLog | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
+  const [focusTick, setFocusTick] = useState(0);
 
   const isFocused = useIsFocused();
   const router    = useRouter();
@@ -178,6 +180,10 @@ export default function DashboardScreen() {
     loadDayDetails(selectedDate).catch(() => {});
   }, [isFocused, selectedDate, loadDayDetails]);
 
+  useEffect(() => {
+    if (isFocused) setFocusTick((v) => v + 1);
+  }, [isFocused]);
+
   // ── أنيميشن ────────────────────────────────────────────────
   // أنيميشن الهيدر عند mount
   useEffect(() => {
@@ -286,12 +292,18 @@ export default function DashboardScreen() {
           </View>
 
           {/* الرصيد */}
-          <Animated.Text style={[styles.balanceValue, {
+          <Animated.View style={{
             opacity: balanceAnim,
             transform: [{ scale: balanceAnim.interpolate({ inputRange:[0,1], outputRange:[0.85,1] }) }],
-          }]}>
-            {formatMoney(summary?.balance ?? 0, locale, currency)}
-          </Animated.Text>
+          }}>
+            <AnimatedBalanceText
+              value={summary?.balance ?? 0}
+              locale={locale}
+              currency={currency}
+              resetKey={focusTick}
+              textStyle={styles.balanceValue}
+            />
+          </Animated.View>
 
           <Animated.View style={{ opacity: detailsOpacity, transform: [{ translateY: detailsTranslate }] }}>
             {/* Limit Bar */}
