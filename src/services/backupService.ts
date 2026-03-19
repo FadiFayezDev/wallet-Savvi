@@ -84,7 +84,7 @@ export const backupService = {
 
     const dir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
     if (!dir) throw new Error('No writable directory found on this device');
-    const fileUri = `${dir}savvi-backup-${Date.now()}.json`;
+    const fileUri = `${dir}Wallet-backup-${Date.now()}.json`;
     await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(payload), {
       encoding: FileSystem.EncodingType.UTF8,
     });

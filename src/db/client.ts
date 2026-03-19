@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 import { migrations } from '@/src/db/migrations';
 
-const DB_NAME = 'savvi.db';
+const DB_NAME = 'wallet.db';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 

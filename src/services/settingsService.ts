@@ -43,7 +43,7 @@ export const settingsService = {
       await runQuery(
         `INSERT INTO app_settings
          (id, name, balance, daily_limit, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, theme_mode, theme_source, time_format, updated_at)
-         VALUES (1, 'المستخدم', 0, NULL, 'EGP', 'ar', 'none', 30, 1, 20, 'dark', 'material', '24h', ?);`,
+         VALUES (1, 'المستخدم', 0, NULL, 'EGP', 'en', 'none', 30, 1, 20, 'dark', 'material', '24h', ?);`,
         [now],
       );
       return {
@@ -51,7 +51,7 @@ export const settingsService = {
         balance: 0,
         dailyLimit: null,
         currencyCode: 'EGP',
-        locale: 'ar',
+        locale: 'en',
         lockMethod: 'none',
         autoLockSeconds: 30,
         spendingAlertEnabled: true,

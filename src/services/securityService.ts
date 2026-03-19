@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
-const PIN_KEY = 'savvi_pin_hash_v1';
+const PIN_KEY = 'wallet_pin_hash_v1';
 
 interface PinPayload {
   salt: string;
@@ -25,7 +25,7 @@ export const securityService = {
     const available = await securityService.canUseBiometric();
     if (!available) return false;
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Unlock Savvi',
+      promptMessage: 'Unlock Wallet',
       fallbackLabel: 'Use PIN',
       disableDeviceFallback: false,
     });

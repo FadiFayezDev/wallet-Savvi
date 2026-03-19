@@ -156,6 +156,7 @@ export default function WorkScreen() {
       selectedSchedule.endTime ?? undefined,
     );
     await load();
+    Alert.alert(isAr ? "تم الحفظ" : "Saved", isAr ? "تم حفظ إعدادات اليوم." : "Day settings have been saved.");
   };
 
   const onAddExpense = async () => {
@@ -190,6 +191,7 @@ export default function WorkScreen() {
       setCustomExpense("");
       setLogNote("");
       await load();
+      Alert.alert(isAr ? "تم الحفظ" : "Saved", isAr ? "تم تسجيل اليوم." : "Custom day logged.");
     } catch (err) {
       Alert.alert(isAr ? "اليوم مسجل بالفعل" : "Work day already logged");
     }

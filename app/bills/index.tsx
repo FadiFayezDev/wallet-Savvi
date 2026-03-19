@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "react-native-paper";
 
 import { CalculatorField } from "@/src/components/common/CalculatorField";
+import { DatePickerField } from "@/src/components/common/DatePickerField";
 import { categoryService } from "@/src/services/categoryService";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
@@ -27,6 +28,7 @@ export default function BillsScreen() {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("");
+  const [dueDate, setDueDate] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(true);
@@ -69,6 +71,7 @@ export default function BillsScreen() {
     setName("");
     setAmount("");
     setDueDay("");
+    setDueDate(null);
     setCategoryId(null);
     setEditingId(null);
     setIsActive(true);
@@ -120,6 +123,12 @@ export default function BillsScreen() {
     setName(bill.name);
     setAmount(String(bill.amount));
     setDueDay(String(bill.due_day));
+    if (bill.due_day) {
+      const day = String(bill.due_day).padStart(2, "0");
+      setDueDate(`${monthKey}-${day}`);
+    } else {
+      setDueDate(null);
+    }
     setCategoryId(bill.category_id ?? null);
     setIsActive(Boolean(bill.is_active));
   };
@@ -182,23 +191,22 @@ export default function BillsScreen() {
           />
         </View>
         <View style={{ marginTop: 8 }}>
-          <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, fontWeight: "700" }}>
-            {locale === "ar" ? "يوم الاستحقاق (يتكرر شهرياً)" : "Due day (repeats monthly)"}
-          </Text>
-          <TextInput
-            value={dueDay}
-            onChangeText={setDueDay}
-            keyboardType="number-pad"
-            placeholder={locale === "ar" ? "مثال: 1 أو 15 أو 28" : "Example: 1 or 15 or 28"}
-            placeholderTextColor={theme.colors.onSurfaceVariant}
-            style={{
-              marginTop: 6,
-              borderRadius: 12,
-              backgroundColor: theme.colors.surfaceVariant,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              color: theme.colors.onSurface,
+          <DatePickerField
+            label={locale === "ar" ? "يوم الاستحقاق (يتكرر شهرياً)" : "Due day (repeats monthly)"}
+            hint={locale === "ar" ? "اختر اليوم من التقويم" : "Pick a day from the calendar"}
+            value={dueDate}
+            onChange={(value) => {
+              setDueDate(value);
+              if (!value) {
+                setDueDay("");
+                return;
+              }
+              const parts = value.split("-");
+              const day = Number(parts[2]);
+              setDueDay(String(day));
             }}
+            required
+            locale={locale}
           />
         </View>
 
@@ -207,7 +215,7 @@ export default function BillsScreen() {
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <Pressable
-            onPress={() => router.push({ pathname: "/(tabs)/categories", params: { tab: "expense" } })}
+            onPress={() => router.push({ pathname: "/categories/manage", params: { tab: "expense" } })}
             style={{
               borderRadius: 100,
               paddingHorizontal: 12,

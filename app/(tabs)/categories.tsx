@@ -105,6 +105,7 @@ export default function CategoriesTabScreen() {
   const [focused,         setFocused]         = useState<'name' | null>(null);
 
   const tabAnim = useRef(new Animated.Value(0)).current; // 0=expense, 1=income
+  const didInitFromParam = useRef(false);
 
   const expenseColor = '#F87171';
   const incomeColor  = '#4ADE80';
@@ -173,9 +174,14 @@ export default function CategoriesTabScreen() {
   const indicatorLeft = tabAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '50%'] });
 
   useEffect(() => {
+    if (didInitFromParam.current) return;
     const requested = params?.tab === 'income' || params?.tab === 'expense' ? params.tab : null;
-    if (!requested || requested === activeTab) return;
+    if (!requested || requested === activeTab) {
+      didInitFromParam.current = true;
+      return;
+    }
     switchTab(requested);
+    didInitFromParam.current = true;
   }, [params?.tab, activeTab]);
 
   return (

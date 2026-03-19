@@ -135,7 +135,7 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -8 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable
-            onPress={() => router.push({ pathname: '/(tabs)/categories', params: { tab: kind } })}
+            onPress={() => router.push({ pathname: '/categories/manage', params: { tab: kind } })}
             style={{
               borderRadius: 100,
               borderWidth: 1,

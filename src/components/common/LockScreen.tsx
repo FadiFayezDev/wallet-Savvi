@@ -39,7 +39,7 @@ export function LockScreen() {
   return (
     <View className="absolute inset-0 z-50 items-center justify-center bg-slate-950/95 p-6">
       <View className="w-full max-w-sm rounded-2xl bg-slate-900 p-5">
-        <Text className="text-xl font-bold text-white">Savvi Locked</Text>
+        <Text className="text-xl font-bold text-white">Wallet Locked</Text>
 
         {(lockMethod === 'pin' || lockMethod === 'biometric') && (
           <View className="mt-4 gap-3">
