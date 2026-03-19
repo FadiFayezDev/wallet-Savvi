@@ -93,7 +93,7 @@ const DayItem = React.memo(
               isToday && !isSelected && { color: primaryColor, opacity: 1 },
             ]}
             numberOfLines={1}
-            adjustsFontSizeToFit
+            ellipsizeMode="tail"
           >
             {label}
           </Text>
