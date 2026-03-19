@@ -20,7 +20,11 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.fadyfayezdev.Savvi"
+      "package": "com.fadyfayezdev.Wallet",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "output": "static",
@@ -57,7 +61,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1bc0edf9-d931-4f71-876d-fece8e72e17e"
+        "projectId": "f9a1fed1-6979-4e5f-8a6f-64eb1a33a4e6"
       }
     }
   }
