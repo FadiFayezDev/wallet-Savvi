@@ -44,10 +44,11 @@ interface DayItemProps {
   onSurfaceColor: string;
   monthNames:     string[];
   onPress:        (date: Date) => void;
+  onLongPress?:   () => void;
 }
 
 const DayItem = React.memo(
-  ({ date, isSelected, isToday, primaryColor, onPrimaryColor, surfaceVariant, onSurfaceColor, monthNames, onPress }: DayItemProps) => {
+  ({ date, isSelected, isToday, primaryColor, onPrimaryColor, surfaceVariant, onSurfaceColor, monthNames, onPress, onLongPress }: DayItemProps) => {
     const scaleAnim   = useRef(new Animated.Value(isSelected ? 1 : 0.88)).current;
     const opacityAnim = useRef(new Animated.Value(isSelected ? 1 : 0.45)).current;
 
@@ -72,6 +73,7 @@ const DayItem = React.memo(
     return (
       <Pressable
         onPress={() => onPress(date)}
+        onLongPress={onLongPress}
         style={styles.dayWrapper}
         hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
       >
@@ -159,6 +161,15 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
     }, 0);
   }, []);
 
+  const resetToToday = useCallback(() => {
+    setSelectedDate(today);
+    onDayChange?.(today);
+    const diff      = Math.round((today.getTime() - baseDate.getTime()) / 86400000);
+    const idx       = INITIAL_INDEX + diff;
+    const centerIdx = Math.max(0, idx - 1);
+    flatListRef.current?.scrollToIndex({ index: centerIdx, animated: true });
+  }, [baseDate, onDayChange, today]);
+
   const handleDayPress = useCallback(
     (date: Date) => {
       setSelectedDate(date);
@@ -183,9 +194,10 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
         onSurfaceColor={onSurfaceColor}
         monthNames={monthNames}
         onPress={handleDayPress}
+        onLongPress={resetToToday}
       />
     ),
-    [selectedDate, today, primaryColor, onPrimaryColor, surfaceVariant, onSurfaceColor, monthNames, handleDayPress],
+    [selectedDate, today, primaryColor, onPrimaryColor, surfaceVariant, onSurfaceColor, monthNames, handleDayPress, resetToToday],
   );
 
   const keyExtractor  = useCallback((_: Date, i: number) => String(i), []);
