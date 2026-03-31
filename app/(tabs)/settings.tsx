@@ -10,6 +10,7 @@ import { IconButton, useTheme } from 'react-native-paper';
 import { CalculatorField } from '@/src/components/common/CalculatorField';
 import { backupService } from '@/src/services/backupService';
 import { dailySummaryService } from '@/src/services/dailySummaryService';
+import { notificationService } from '@/src/services/notificationService';
 import { securityService } from '@/src/services/securityService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import { confirmAction } from '@/src/utils/confirm';
@@ -151,7 +152,7 @@ function SelectDropdown({
 // ── الشاشة ───────────────────────────────────────────────────────
 const lockMethods:  ('none' | 'pin' | 'biometric')[]    = ['none', 'pin', 'biometric'];
 const themeModes:   ('light' | 'dark' | 'system')[]     = ['light', 'dark', 'system'];
-const themeSources: ('material' | 'fixed')[]            = ['material', 'fixed'];
+const themeSources: ('material' | 'fixed' | 'mono')[]   = ['material', 'fixed', 'mono'];
 const timeFormats:  ('12h' | '24h')[]                   = ['12h', '24h'];
 const locales:      ('ar' | 'en')[]                     = ['ar', 'en'];
 
@@ -187,7 +188,11 @@ export default function SettingsTab() {
   const timeFormatValue  = settings.timeFormat  ?? '24h';
   const selectedLocaleLabel = settings.locale === 'ar' ? 'العربية' : 'English';
   const selectedThemeLabel = t(`settings.${settings.themeMode}`);
-  const selectedThemeSourceLabel = themeSourceValue === 'material' ? 'Material You' : (isAr ? 'ثابت' : 'Fixed');
+  const selectedThemeSourceLabel = themeSourceValue === 'material'
+    ? 'Material You'
+    : themeSourceValue === 'mono'
+      ? (isAr ? 'أبيض وأسود' : 'Black & White')
+      : (isAr ? 'ثابت' : 'Fixed');
   const selectedTimeFormatLabel = timeFormatValue === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h');
   const selectedLockLabel = t(`settings.${settings.lockMethod}`);
 
@@ -212,6 +217,16 @@ export default function SettingsTab() {
       try { await patchSettings({ dailyLimit: null }); dailySummaryService.recomputeAllSummaries().catch(() => undefined); }
       finally { setSavingLimit(false); }
     }
+  };
+
+  const toggleNotifyBills = async () => {
+    await patchSettings({ notifyBillsEnabled: !settings.notifyBillsEnabled });
+    notificationService.rescheduleAll().catch(() => undefined);
+  };
+
+  const toggleNotifyWork = async () => {
+    await patchSettings({ notifyWorkEnabled: !settings.notifyWorkEnabled });
+    notificationService.rescheduleAll().catch(() => undefined);
   };
 
   return (
@@ -279,7 +294,11 @@ export default function SettingsTab() {
           }}
           options={themeSources.map((source) => ({
             key: source,
-            label: source === 'material' ? 'Material You' : (isAr ? 'ثابت' : 'Fixed'),
+            label: source === 'material'
+              ? 'Material You'
+              : source === 'mono'
+                ? (isAr ? 'أبيض وأسود' : 'Black & White')
+                : (isAr ? 'ثابت' : 'Fixed'),
           }))}
         />
       </SettingSection>
@@ -447,6 +466,68 @@ export default function SettingsTab() {
           }}
         />
       </SettingSection>
+
+      {/* ── التنبيهات ── */}
+      <SettingSection
+        icon="bell-outline"
+        title={isAr ? 'التنبيهات' : 'Notifications'}
+        subtitle={isAr ? 'تحكم بالتنبيهات الأساسية' : 'Control your reminders'}
+      >
+        <Pressable
+          onPress={toggleNotifyBills}
+          style={[styles.toggleRow, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outlineVariant }]}
+        >
+          <Text style={[styles.toggleLabel, { color: theme.colors.onSurface }]}>
+            {isAr ? 'تنبيهات الفواتير' : 'Bill reminders'}
+          </Text>
+          <View style={[
+            styles.togglePill,
+            { backgroundColor: settings.notifyBillsEnabled ? theme.colors.primary : theme.colors.surface },
+          ]}>
+            <Text style={{ color: settings.notifyBillsEnabled ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, fontWeight: '700' }}>
+              {settings.notifyBillsEnabled ? (isAr ? 'مفعّل' : 'On') : (isAr ? 'متوقف' : 'Off')}
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={toggleNotifyWork}
+          style={[styles.toggleRow, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outlineVariant }]}
+        >
+          <Text style={[styles.toggleLabel, { color: theme.colors.onSurface }]}>
+            {isAr ? 'تنبيهات الشغل' : 'Work reminders'}
+          </Text>
+          <View style={[
+            styles.togglePill,
+            { backgroundColor: settings.notifyWorkEnabled ? theme.colors.primary : theme.colors.surface },
+          ]}>
+            <Text style={{ color: settings.notifyWorkEnabled ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, fontWeight: '700' }}>
+              {settings.notifyWorkEnabled ? (isAr ? 'مفعّل' : 'On') : (isAr ? 'متوقف' : 'Off')}
+            </Text>
+          </View>
+        </Pressable>
+
+        <View style={styles.chips}>
+          <ActionButton
+            label={isAr ? 'اختبار تنبيه' : 'Test notification'}
+            icon="bell-plus-outline"
+            variant="secondary"
+            onPress={() => {
+              notificationService.scheduleTestNotification(5).catch(() => undefined);
+              Alert.alert(isAr ? 'تم الإرسال' : 'Scheduled', isAr ? 'سيظهر التنبيه بعد 5 ثوانٍ.' : 'Notification will appear in 5 seconds.');
+            }}
+          />
+          <ActionButton
+            label={isAr ? 'مسح تنبيهات الاختبار' : 'Clear test notifications'}
+            icon="bell-off-outline"
+            variant="surface"
+            onPress={() => {
+              notificationService.cancelAllTestNotifications().catch(() => undefined);
+              Alert.alert(isAr ? 'تم المسح' : 'Cleared', isAr ? 'تم حذف تنبيهات الاختبار.' : 'Test notifications cleared.');
+            }}
+          />
+        </View>
+      </SettingSection>
     </ScrollView>
   );
 }
@@ -487,6 +568,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, gap: 4,
   },
   pinInput: { flex: 1, paddingVertical: 12, fontSize: 14 },
+
+  // toggles
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  toggleLabel: { fontSize: 14, fontWeight: '700' },
+  togglePill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
 
   // dropdown
   dropdownTrigger: {

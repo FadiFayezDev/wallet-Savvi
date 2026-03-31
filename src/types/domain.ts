@@ -3,7 +3,7 @@ export type CategoryType = 'income' | 'expense' | 'both';
 export type GoalStatus = 'active' | 'completed' | 'cancelled';
 export type LockMethod = 'none' | 'pin' | 'biometric';
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type ThemeSource = 'material' | 'fixed';
+export type ThemeSource = 'material' | 'fixed' | 'mono';
 export type TimeFormat = '12h' | '24h';
 export type BillStatus = 'pending' | 'paid' | 'skipped';
 
@@ -88,6 +88,8 @@ export interface AppSettings {
   autoLockSeconds: number;
   spendingAlertEnabled: boolean;
   spendingAlertThresholdPct: number;
+  notifyBillsEnabled: boolean;
+  notifyWorkEnabled: boolean;
   themeMode: ThemeMode;
   themeSource: ThemeSource;
   timeFormat: TimeFormat;

@@ -15,6 +15,7 @@ import {
   PaperProvider,
   adaptNavigationTheme,
 } from "react-native-paper";
+import * as Notifications from "expo-notifications";
 
 // حل مشكلة الـ Linking في Expo Go
 let MaterialYouColors: any = null;
@@ -26,6 +27,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { LockScreen } from "@/src/components/common/LockScreen";
 import { useAppStore } from "@/src/stores/appStore";
 import { useSettingsStore } from "@/src/stores/settingsStore";
+import { notificationService } from "@/src/services/notificationService";
+import { useRouter } from "expo-router";
 import "react-native-reanimated";
 import "./global.css";
 
@@ -42,6 +45,7 @@ export default function RootLayout() {
   const [systemPalette, setSystemPalette] = useState<any | null>(null);
   const bootstrap = useAppStore((state) => state.bootstrap);
   const isReady = useAppStore((state) => state.isReady);
+  const router = useRouter();
   const isLocked = useAppStore((state) => state.isLocked);
   const lock = useAppStore((state) => state.lock);
   const unlock = useAppStore((state) => state.unlock);
@@ -72,6 +76,28 @@ export default function RootLayout() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    notificationService.init()
+      .then(() => notificationService.rescheduleAll())
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const handleResponse = (response: Notifications.NotificationResponse) => {
+      const data = response?.notification?.request?.content?.data as any;
+      if (!data?.type) return;
+      if (data.type === "bill") router.push("/bills");
+      if (data.type === "work") router.push("/work");
+    };
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => { if (response) handleResponse(response); })
+      .catch(() => undefined);
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    return () => sub.remove();
+  }, [router]);
 
   useEffect(() => {
     if (lockMethod === "none") {
@@ -148,6 +174,79 @@ export default function RootLayout() {
     };
   };
 
+  const applyMonoColors = (isDark: boolean) => {
+    if (isDark) {
+      return {
+        primary: "#FFFFFF",
+        onPrimary: "#000000",
+        primaryContainer: "#1A1A1A",
+        onPrimaryContainer: "#FFFFFF",
+        secondary: "#E6E6E6",
+        onSecondary: "#000000",
+        secondaryContainer: "#222222",
+        onSecondaryContainer: "#FFFFFF",
+        tertiary: "#CCCCCC",
+        onTertiary: "#000000",
+        tertiaryContainer: "#262626",
+        onTertiaryContainer: "#FFFFFF",
+        background: "#000000",
+        onBackground: "#FFFFFF",
+        surface: "#0A0A0A",
+        onSurface: "#FFFFFF",
+        surfaceVariant: "#141414",
+        onSurfaceVariant: "#BDBDBD",
+        outline: "#2E2E2E",
+        outlineVariant: "#3A3A3A",
+        inverseSurface: "#FFFFFF",
+        inverseOnSurface: "#000000",
+        inversePrimary: "#000000",
+        error: "#FCA5A5",
+        onError: "#3F0A0A",
+        errorContainer: "#4B0A0A",
+        onErrorContainer: "#FEE2E2",
+        surfaceDisabled: "#121212",
+        onSurfaceDisabled: "#6B6B6B",
+        backdrop: "#000000",
+        shadow: "#000000",
+        scrim: "#000000",
+      };
+    }
+    return {
+      primary: "#000000",
+      onPrimary: "#FFFFFF",
+      primaryContainer: "#E6E6E6",
+      onPrimaryContainer: "#000000",
+      secondary: "#1A1A1A",
+      onSecondary: "#FFFFFF",
+      secondaryContainer: "#E0E0E0",
+      onSecondaryContainer: "#000000",
+      tertiary: "#333333",
+      onTertiary: "#FFFFFF",
+      tertiaryContainer: "#D6D6D6",
+      onTertiaryContainer: "#000000",
+      background: "#FFFFFF",
+      onBackground: "#000000",
+      surface: "#FAFAFA",
+      onSurface: "#000000",
+      surfaceVariant: "#F0F0F0",
+      onSurfaceVariant: "#4D4D4D",
+      outline: "#BDBDBD",
+      outlineVariant: "#D1D1D1",
+      inverseSurface: "#000000",
+      inverseOnSurface: "#FFFFFF",
+      inversePrimary: "#FFFFFF",
+      error: "#FCA5A5",
+      onError: "#3F0A0A",
+      errorContainer: "#FEE2E2",
+      onErrorContainer: "#3F0A0A",
+      surfaceDisabled: "#F2F2F2",
+      onSurfaceDisabled: "#9E9E9E",
+      backdrop: "#FFFFFF",
+      shadow: "#000000",
+      scrim: "#000000",
+    };
+  };
+
   const finalTheme = useMemo(() => {
     const isDark = resolvedThemeMode === "dark";
     const basePaper = isDark ? MD3DarkTheme : MD3LightTheme;
@@ -157,6 +256,24 @@ export default function RootLayout() {
       const colors = {
         ...basePaper.colors,
         ...applyFixedColors(isDark),
+      };
+      return {
+        paper: { ...basePaper, colors },
+        nav: {
+          ...baseNav,
+          colors: {
+            ...baseNav.colors,
+            card: colors.surface,
+            background: colors.background,
+          },
+        },
+      };
+    }
+
+    if (themeSource === "mono") {
+      const colors = {
+        ...basePaper.colors,
+        ...applyMonoColors(isDark),
       };
       return {
         paper: { ...basePaper, colors },

@@ -7,6 +7,7 @@ import { useTheme } from "react-native-paper";
 import { CalculatorField } from "@/src/components/common/CalculatorField";
 import { DatePickerField } from "@/src/components/common/DatePickerField";
 import { categoryService } from "@/src/services/categoryService";
+import { notificationService } from "@/src/services/notificationService";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import type { Category } from "@/src/types/domain";
@@ -111,6 +112,7 @@ export default function BillsScreen() {
           isActive,
         });
       }
+      notificationService.rescheduleAll().catch(() => undefined);
       resetForm();
       await load();
     } catch (error) {
@@ -450,6 +452,7 @@ export default function BillsScreen() {
                       });
                       if (!ok) return;
                       await recurringBillService.toggleBillStatus(bill.id, !bill.is_active);
+                      notificationService.rescheduleAll().catch(() => undefined);
                       await load();
                     }}
                     style={{

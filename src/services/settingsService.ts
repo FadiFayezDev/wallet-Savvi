@@ -13,6 +13,8 @@ interface AppSettingsRow {
   auto_lock_seconds: number;
   spending_alert_enabled: number;
   spending_alert_threshold_pct: number;
+  notify_bills_enabled: number;
+  notify_work_enabled: number;
   theme_mode: ThemeMode;
   theme_source: 'material' | 'fixed';
   time_format: '12h' | '24h';
@@ -29,6 +31,8 @@ const mapSettings = (row: AppSettingsRow): AppSettings => ({
   autoLockSeconds: row.auto_lock_seconds,
   spendingAlertEnabled: Boolean(row.spending_alert_enabled),
   spendingAlertThresholdPct: row.spending_alert_threshold_pct,
+  notifyBillsEnabled: Boolean(row.notify_bills_enabled),
+  notifyWorkEnabled: Boolean(row.notify_work_enabled),
   themeMode: row.theme_mode,
   themeSource: row.theme_source ?? 'material',
   timeFormat: row.time_format ?? '24h',
@@ -42,8 +46,8 @@ export const settingsService = {
       const now = nowIso();
       await runQuery(
         `INSERT INTO app_settings
-         (id, name, balance, daily_limit, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, theme_mode, theme_source, time_format, updated_at)
-         VALUES (1, 'المستخدم', 0, NULL, 'EGP', 'en', 'none', 30, 1, 20, 'dark', 'material', '24h', ?);`,
+         (id, name, balance, daily_limit, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, notify_bills_enabled, notify_work_enabled, theme_mode, theme_source, time_format, updated_at)
+         VALUES (1, 'المستخدم', 0, NULL, 'EGP', 'en', 'none', 30, 1, 20, 1, 1, 'dark', 'material', '24h', ?);`,
         [now],
       );
       return {
@@ -56,6 +60,8 @@ export const settingsService = {
         autoLockSeconds: 30,
         spendingAlertEnabled: true,
         spendingAlertThresholdPct: 20,
+        notifyBillsEnabled: true,
+        notifyWorkEnabled: true,
         themeMode: 'dark',
         themeSource: 'material',
         timeFormat: '24h',
@@ -84,6 +90,8 @@ export const settingsService = {
            auto_lock_seconds = ?,
            spending_alert_enabled = ?,
            spending_alert_threshold_pct = ?,
+           notify_bills_enabled = ?,
+           notify_work_enabled = ?,
            theme_mode = ?,
            theme_source = ?,
            time_format = ?,
@@ -99,6 +107,8 @@ export const settingsService = {
         updated.autoLockSeconds,
         updated.spendingAlertEnabled ? 1 : 0,
         updated.spendingAlertThresholdPct,
+        updated.notifyBillsEnabled ? 1 : 0,
+        updated.notifyWorkEnabled ? 1 : 0,
         updated.themeMode,
         updated.themeSource,
         updated.timeFormat,

@@ -347,8 +347,8 @@ export const backupService = {
       for (const row of parsed.data.settings) {
         await runQuery(
           `INSERT INTO app_settings
-           (id, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, theme_mode, theme_source, time_format, name, balance, daily_limit, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+           (id, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, notify_bills_enabled, notify_work_enabled, theme_mode, theme_source, time_format, name, balance, daily_limit, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             row.id,
             row.currency_code,
@@ -357,6 +357,8 @@ export const backupService = {
             row.auto_lock_seconds,
             row.spending_alert_enabled,
             row.spending_alert_threshold_pct,
+            row.notify_bills_enabled ?? 1,
+            row.notify_work_enabled ?? 1,
             row.theme_mode,
             row.theme_source ?? 'material',
             row.time_format ?? '24h',

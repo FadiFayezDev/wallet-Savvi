@@ -128,13 +128,13 @@ export default function CategoriesTabScreen() {
     [activeTab, categories],
   );
 
-  const switchTab = (tab: CategoryTab) => {
+  const switchTab = (tab: CategoryTab, opts: { reset?: boolean } = {}) => {
     Animated.spring(tabAnim, {
       toValue: tab === 'income' ? 1 : 0,
       tension: 80, friction: 12, useNativeDriver: false,
     }).start();
     setActiveTab(tab);
-    resetForm();
+    if (opts.reset !== false) resetForm();
   };
 
   const resetForm = () => { setName(''); setEditingCategory(null); };
@@ -286,9 +286,12 @@ export default function CategoriesTabScreen() {
               locale={locale}
               activeColor={activeColor}
               onEdit={() => {
+                const targetTab = item.type === 'income' ? 'income' : 'expense';
+                if (targetTab !== activeTab) {
+                  switchTab(targetTab, { reset: false });
+                }
                 setEditingCategory(item);
                 setName(locale === 'ar' ? item.nameAr : item.nameEn);
-                switchTab(item.type === 'income' ? 'income' : 'expense');
               }}
               onDelete={async () => {
                 const ok = await confirmAction({

@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS monthly_reports (
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   currency_code TEXT NOT NULL DEFAULT 'EGP',
-  locale TEXT NOT NULL DEFAULT 'ar',
+  locale TEXT NOT NULL DEFAULT 'en',
   lock_method TEXT NOT NULL DEFAULT 'none' CHECK (lock_method IN ('none', 'pin', 'biometric')),
   auto_lock_seconds INTEGER NOT NULL DEFAULT 30,
   spending_alert_enabled INTEGER NOT NULL DEFAULT 1,
@@ -202,7 +202,7 @@ WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name_en = 'Investment');
 
 -- Seed App Settings with new fields (name, balance)
 INSERT INTO app_settings (id, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, theme_mode, name, balance, updated_at)
-SELECT 1, 'EGP', 'ar', 'none', 30, 1, 20, 'dark', 'المستخدم', 0, datetime('now')
+SELECT 1, 'EGP', 'en', 'none', 30, 1, 20, 'dark', 'المستخدم', 0, datetime('now')
 WHERE NOT EXISTS (SELECT 1 FROM app_settings WHERE id = 1);
 `;
 
@@ -211,9 +211,15 @@ ALTER TABLE app_settings ADD COLUMN theme_source TEXT NOT NULL DEFAULT 'material
 ALTER TABLE app_settings ADD COLUMN time_format TEXT NOT NULL DEFAULT '24h';
 `;
 
+const migration005 = `
+ALTER TABLE app_settings ADD COLUMN notify_bills_enabled INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE app_settings ADD COLUMN notify_work_enabled INTEGER NOT NULL DEFAULT 1;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, name: '001_init', sql: migration001 },
   { version: 2, name: '002_indexes', sql: migration002 },
   { version: 3, name: '003_seed_categories', sql: migration003 },
   { version: 4, name: '004_app_settings_time_theme', sql: migration004 },
+  { version: 5, name: '005_app_settings_notifications', sql: migration005 },
 ];

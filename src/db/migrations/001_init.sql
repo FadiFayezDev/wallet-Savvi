@@ -83,11 +83,13 @@ CREATE TABLE IF NOT EXISTS monthly_reports (
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   currency_code TEXT NOT NULL DEFAULT 'EGP',
-  locale TEXT NOT NULL DEFAULT 'ar',
+  locale TEXT NOT NULL DEFAULT 'en',
   lock_method TEXT NOT NULL DEFAULT 'none' CHECK (lock_method IN ('none', 'pin', 'biometric')),
   auto_lock_seconds INTEGER NOT NULL DEFAULT 30,
   spending_alert_enabled INTEGER NOT NULL DEFAULT 1,
   spending_alert_threshold_pct REAL NOT NULL DEFAULT 20,
+  notify_bills_enabled INTEGER NOT NULL DEFAULT 1,
+  notify_work_enabled INTEGER NOT NULL DEFAULT 1,
   theme_mode TEXT NOT NULL DEFAULT 'dark' CHECK (theme_mode IN ('light', 'dark', 'system')),
   name TEXT NOT NULL DEFAULT 'المستخدم', -- Added before updated_at
   balance REAL NOT NULL DEFAULT 0,      -- Added before updated_at

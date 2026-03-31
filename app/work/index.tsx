@@ -8,6 +8,7 @@ import { IconButton, useTheme } from "react-native-paper";
 import { CalculatorField } from "@/src/components/common/CalculatorField";
 import { DatePickerField } from "@/src/components/common/DatePickerField";
 import { TimePickerField, formatTimeLabel } from "@/src/components/common/TimePickerField";
+import { notificationService } from "@/src/services/notificationService";
 import { WORK_SKIP_NOTE, workService } from "@/src/services/workService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import type { DailyWorkExpense, WorkSchedule, WorkDayLog } from "@/src/types/domain";
@@ -155,6 +156,7 @@ export default function WorkScreen() {
       selectedSchedule.startTime ?? undefined,
       selectedSchedule.endTime ?? undefined,
     );
+    notificationService.rescheduleAll().catch(() => undefined);
     await load();
     Alert.alert(isAr ? "تم الحفظ" : "Saved", isAr ? "تم حفظ إعدادات اليوم." : "Day settings have been saved.");
   };

@@ -23,5 +23,5 @@ SELECT 'استثمار', 'Investment', 'income', 'trending-up', '#10B981', 1, da
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name_en = 'Investment');
 
 INSERT INTO app_settings (id, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, theme_mode, updated_at)
-SELECT 1, 'EGP', 'ar', 'none', 30, 1, 20, 'dark', datetime('now')
+SELECT 1, 'EGP', 'en', 'none', 30, 1, 20, 'dark', datetime('now')
 WHERE NOT EXISTS (SELECT 1 FROM app_settings WHERE id = 1);
