@@ -20,28 +20,33 @@ export function SnapshotCard({ title, value, subtitle, icon, tone }: SnapshotCar
     switch (tone) {
       case 'green':
         return { 
-          bubble: '#22c55e', // لون حالة النجاح المالي
-          valueColor: theme.colors.primary 
+          bubble: theme.colors.success, // لون حالة النجاح المالي
+          onBubble: theme.colors.onSuccess,
+          valueColor: theme.colors.success,
         };
       case 'blue':
         return { 
-          bubble: theme.colors.primary, 
-          valueColor: theme.colors.primary 
+          bubble: theme.colors.info ?? theme.colors.primary, 
+          onBubble: theme.colors.onInfo ?? theme.colors.onPrimary,
+          valueColor: theme.colors.info ?? theme.colors.primary,
         };
       case 'orange':
         return { 
-          bubble: '#f97316', // لون التنبيه للمصروفات
-          valueColor: theme.colors.error 
+          bubble: theme.colors.warning, // لون التنبيه للمصروفات
+          onBubble: theme.colors.onWarning,
+          valueColor: theme.colors.error,
         };
       case 'purple':
         return { 
           bubble: theme.colors.tertiary, 
-          valueColor: theme.colors.tertiary 
+          onBubble: theme.colors.onTertiary,
+          valueColor: theme.colors.tertiary,
         };
       default:
         return { 
           bubble: theme.colors.secondary, 
-          valueColor: theme.colors.onSurface 
+          onBubble: theme.colors.onSecondary,
+          valueColor: theme.colors.onSurface,
         };
     }
   };
@@ -64,7 +69,7 @@ export function SnapshotCard({ title, value, subtitle, icon, tone }: SnapshotCar
         style={{ backgroundColor: styles.bubble }} 
         className="h-12 w-12 items-center justify-center rounded-2xl elevation-2 shadow-md"
       >
-        <Ionicons name={icon} size={24} color="#fff" />
+        <Ionicons name={icon} size={24} color={styles.onBubble} />
       </View>
 
       {/* Title */}
@@ -77,7 +82,7 @@ export function SnapshotCard({ title, value, subtitle, icon, tone }: SnapshotCar
 
       {/* Value */}
       <Text 
-        style={{ color: theme.colors.onSurface }} 
+        style={{ color: styles.valueColor }} 
         className="mt-1 text-2xl font-black"
         numberOfLines={1}
         adjustsFontSizeToFit

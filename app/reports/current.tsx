@@ -12,6 +12,7 @@ import { transactionService } from "@/src/services/transactionService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import type { Category, Transaction } from "@/src/types/domain";
 import { monthEndIso, monthStartIso, toMonthKey } from "@/src/utils/date";
+import { withAlpha } from "@/src/utils/colors";
 import { formatMoney } from "@/src/utils/money";
 
 const weekRanges = [
@@ -159,38 +160,49 @@ export default function CurrentMonthReport() {
       contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 32, gap: 16 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
     >
-      <LinearGradient colors={["#0b1220", "#152238", "#0b1220"]} style={styles.hero}>
+      <LinearGradient
+        colors={[
+          theme.colors.headerGradientStart,
+          theme.colors.headerGradientMid,
+          theme.colors.headerGradientEnd,
+        ]}
+        style={styles.hero}
+      >
         <View style={styles.heroRow}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>{isAr ? "رجوع" : "Back"}</Text>
+          <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: withAlpha(theme.colors.headerText, 0.12) }]}>
+            <Text style={[styles.backText, { color: theme.colors.headerText }]}>{isAr ? "رجوع" : "Back"}</Text>
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>{isAr ? "تحليل الشهر الحالي" : "Current Month Analysis"}</Text>
-            <Text style={styles.heroSubtitle}>{monthKey} • {isAr ? "تحديث مباشر" : "Live insight"}</Text>
+            <Text style={[styles.heroTitle, { color: theme.colors.headerText }]}>
+              {isAr ? "تحليل الشهر الحالي" : "Current Month Analysis"}
+            </Text>
+            <Text style={[styles.heroSubtitle, { color: withAlpha(theme.colors.headerText, 0.65) }]}>
+              {monthKey} • {isAr ? "تحديث مباشر" : "Live insight"}
+            </Text>
           </View>
-          <View style={styles.livePill}>
-            <Text style={styles.liveText}>{isAr ? "LIVE" : "LIVE"}</Text>
+          <View style={[styles.livePill, { backgroundColor: withAlpha(theme.colors.success, 0.2) }]}>
+            <Text style={[styles.liveText, { color: theme.colors.success }]}>{isAr ? "LIVE" : "LIVE"}</Text>
           </View>
         </View>
 
         <View style={styles.heroStats}>
-          <View style={[styles.kpiCard, { backgroundColor: "rgba(34,197,94,0.18)" }]}>
-            <Text style={styles.kpiLabel}>{isAr ? "الدخل" : "Income"}</Text>
-            <Text style={styles.kpiValue}>
+          <View style={[styles.kpiCard, { backgroundColor: withAlpha(theme.colors.success, 0.18) }]}>
+            <Text style={[styles.kpiLabel, { color: withAlpha(theme.colors.headerText, 0.7) }]}>{isAr ? "الدخل" : "Income"}</Text>
+            <Text style={[styles.kpiValue, { color: theme.colors.headerText }]}>
               {formatMoney(report?.totalIncome ?? 0, localeKey, currency)}
             </Text>
           </View>
-          <View style={[styles.kpiCard, { backgroundColor: "rgba(248,113,113,0.18)" }]}>
-            <Text style={styles.kpiLabel}>{isAr ? "المصروف" : "Expense"}</Text>
-            <Text style={styles.kpiValue}>
+          <View style={[styles.kpiCard, { backgroundColor: withAlpha(theme.colors.error, 0.18) }]}>
+            <Text style={[styles.kpiLabel, { color: withAlpha(theme.colors.headerText, 0.7) }]}>{isAr ? "المصروف" : "Expense"}</Text>
+            <Text style={[styles.kpiValue, { color: theme.colors.headerText }]}>
               {formatMoney(report?.totalExpense ?? 0, localeKey, currency)}
             </Text>
           </View>
-          <View style={[styles.kpiCard, { backgroundColor: "rgba(14,165,233,0.2)" }]}>
-            <Text style={styles.kpiLabel}>{isAr ? "الصافي" : "Net"}</Text>
+          <View style={[styles.kpiCard, { backgroundColor: withAlpha(theme.colors.info, 0.2) }]}>
+            <Text style={[styles.kpiLabel, { color: withAlpha(theme.colors.headerText, 0.7) }]}>{isAr ? "الصافي" : "Net"}</Text>
             <Text style={[
               styles.kpiValue,
-              { color: (report?.netResult ?? 0) >= 0 ? "#4ADE80" : "#F87171" },
+              { color: (report?.netResult ?? 0) >= 0 ? theme.colors.success : theme.colors.error },
             ]}>
               {formatMoney(report?.netResult ?? 0, localeKey, currency, true)}
             </Text>
@@ -215,7 +227,7 @@ export default function CurrentMonthReport() {
           <View style={styles.sparkRow}>
             {dailySeries.map((d) => {
               const h = Math.max(3, Math.abs(d.net) / maxDailyAbs * 80);
-              const color = d.net >= 0 ? "#22C55E" : "#F87171";
+              const color = d.net >= 0 ? theme.colors.success : theme.colors.error;
               return (
                 <View key={d.day} style={styles.sparkItem}>
                   <View style={[styles.sparkBar, { height: h, backgroundColor: color }]} />
@@ -245,17 +257,17 @@ export default function CurrentMonthReport() {
                 <View style={[styles.weekTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
                   <View style={[
                     styles.weekFill,
-                    { width: `${Math.max(5, (week.income / maxWeekValue) * 100)}%`, backgroundColor: "#22C55E" },
+                    { width: `${Math.max(5, (week.income / maxWeekValue) * 100)}%`, backgroundColor: theme.colors.success },
                   ]} />
                 </View>
                 <View style={[styles.weekTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
                   <View style={[
                     styles.weekFill,
-                    { width: `${Math.max(5, (week.expense / maxWeekValue) * 100)}%`, backgroundColor: "#F87171" },
+                    { width: `${Math.max(5, (week.expense / maxWeekValue) * 100)}%`, backgroundColor: theme.colors.error },
                   ]} />
                 </View>
               </View>
-              <Text style={{ color: week.net >= 0 ? "#4ADE80" : "#F87171", fontWeight: "700" }}>
+              <Text style={{ color: week.net >= 0 ? theme.colors.success : theme.colors.error, fontWeight: "700" }}>
                 {formatMoney(week.net, localeKey, currency, true)}
               </Text>
             </View>
@@ -285,7 +297,12 @@ export default function CurrentMonthReport() {
                   {formatMoney(row.amount, localeKey, currency)}
                 </Text>
                 <View style={[styles.expenseTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
-                  <View style={[styles.expenseFill, { width: `${row.pct.toFixed(1)}%` }]} />
+                  <View
+                    style={[
+                      styles.expenseFill,
+                      { width: `${row.pct.toFixed(1)}%`, backgroundColor: theme.colors.info },
+                    ]}
+                  />
                 </View>
               </View>
             ))}
@@ -366,7 +383,7 @@ export default function CurrentMonthReport() {
                 <Text style={[styles.weekTitle, { color: theme.colors.onSurface }]}>
                   {isAr ? `أسبوع ${week.label}` : `Week ${week.label}`}
                 </Text>
-                <Text style={{ color: week.net >= 0 ? "#4ADE80" : "#F87171", fontWeight: "800" }}>
+                <Text style={{ color: week.net >= 0 ? theme.colors.success : theme.colors.error, fontWeight: "800" }}>
                   {formatMoney(week.net, localeKey, currency, true)}
                 </Text>
               </View>
@@ -393,7 +410,7 @@ export default function CurrentMonthReport() {
                           {new Date(tx.occurredAt).toLocaleDateString(locale)}
                         </Text>
                       </View>
-                      <Text style={{ color: tx.signedAmount >= 0 ? "#4ADE80" : "#F87171", fontWeight: "700" }}>
+                      <Text style={{ color: tx.signedAmount >= 0 ? theme.colors.success : theme.colors.error, fontWeight: "700" }}>
                         {formatMoney(tx.signedAmount, localeKey, currency, true)}
                       </Text>
                     </View>
@@ -411,17 +428,17 @@ export default function CurrentMonthReport() {
 const styles = StyleSheet.create({
   hero: { borderRadius: 28, padding: 18, gap: 12 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  heroTitle: { fontSize: 20, fontWeight: "900", color: "#F8FAFC" },
-  heroSubtitle: { fontSize: 12, color: "rgba(248,250,252,0.65)" },
-  backBtn: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "rgba(255,255,255,0.12)" },
-  backText: { color: "#E2E8F0", fontWeight: "700", fontSize: 12 },
-  livePill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "rgba(34,197,94,0.2)" },
-  liveText: { color: "#4ADE80", fontWeight: "900", fontSize: 10 },
+  heroTitle: { fontSize: 20, fontWeight: "900" },
+  heroSubtitle: { fontSize: 12 },
+  backBtn: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
+  backText: { fontWeight: "700", fontSize: 12 },
+  livePill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  liveText: { fontWeight: "900", fontSize: 10 },
 
   heroStats: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
   kpiCard: { flex: 1, minWidth: 110, borderRadius: 16, padding: 12, gap: 4 },
-  kpiLabel: { color: "rgba(248,250,252,0.7)", fontSize: 11, fontWeight: "700" },
-  kpiValue: { color: "#F8FAFC", fontSize: 14, fontWeight: "900" },
+  kpiLabel: { fontSize: 11, fontWeight: "700" },
+  kpiValue: { fontSize: 14, fontWeight: "900" },
 
   card: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 10 },
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -442,15 +459,15 @@ const styles = StyleSheet.create({
   expenseLabel: { fontSize: 12, fontWeight: "700" },
   expenseValue: { fontSize: 11, fontWeight: "600" },
   expenseTrack: { height: 6, borderRadius: 999, overflow: "hidden" },
-  expenseFill: { height: "100%", backgroundColor: "#0EA5E9" },
+  expenseFill: { height: "100%" },
 
   signalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 6 },
   signalCard: { flexBasis: "48%", borderRadius: 12, borderWidth: 1, padding: 10, gap: 4 },
   signalLabel: { fontSize: 11, fontWeight: "700" },
   signalValue: { fontSize: 12, fontWeight: "800" },
 
-  weekCard: { borderRadius: 14, borderWidth: 1, padding: 12, borderColor: "rgba(148,163,184,0.2)" },
+  weekCard: { borderRadius: 14, borderWidth: 1, padding: 12 },
   weekHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   weekTitle: { fontSize: 12, fontWeight: "800" },
-  txRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, borderColor: "rgba(148,163,184,0.2)", padding: 8 },
+  txRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, padding: 8 },
 });

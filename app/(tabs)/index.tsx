@@ -23,17 +23,10 @@ import { useSettingsStore } from "@/src/stores/settingsStore";
 import type { Transaction, WorkDayLog } from "@/src/types/domain";
 import { toMonthKey } from "@/src/utils/date";
 import { formatMoney } from "@/src/utils/money";
+import { withAlpha } from "@/src/utils/colors";
 import dayjs from "dayjs";
 
 // ── أيقونة + لون لكل نوع معاملة ──────────────────────────────
-const TRANSACTION_KIND_META = {
-  income:        { icon: "arrow-down-circle",    color: "#4ADE80", bg: "rgba(74,222,128,0.12)" },
-  expense:       { icon: "arrow-up-circle",      color: "#F87171", bg: "rgba(248,113,113,0.12)" },
-  bill_payment:  { icon: "receipt-text-outline", color: "#FB923C", bg: "rgba(251,146,60,0.12)" },
-  work_expense:  { icon: "briefcase-outline",    color: "#60A5FA", bg: "rgba(96,165,250,0.12)" },
-  goal_transfer: { icon: "flag-outline",         color: "#A78BFA", bg: "rgba(167,139,250,0.12)" },
-  goal_refund:   { icon: "flag-remove-outline",  color: "#34D399", bg: "rgba(52,211,153,0.12)" },
-} as const satisfies Record<string, { icon: string; color: string; bg: string }>;
 
 // ── هوك لـ staggered animation ─────────────────────────────────
 function useStaggeredAnim(count: number, trigger: unknown) {
@@ -83,6 +76,30 @@ export default function DashboardScreen() {
   const locale   = settings?.locale      ?? "ar";
   const currency = settings?.currencyCode ?? "EGP";
   const isArabic = locale === "ar";
+
+  const headerStart = theme.colors.headerGradientStart ?? theme.colors.primary;
+  const headerMid = theme.colors.headerGradientMid ?? theme.colors.primary;
+  const headerEnd = theme.colors.headerGradientEnd ?? theme.colors.secondary;
+  const headerText = theme.colors.headerText ?? theme.colors.onPrimary;
+  const headerIcon = theme.colors.headerIcon ?? theme.colors.onPrimary;
+  const headerTextStrong = withAlpha(headerText, 0.8);
+  const headerTextMuted = withAlpha(headerText, 0.55);
+  const headerGlass = withAlpha(headerText, 0.08);
+  const headerBorder = withAlpha(headerText, 0.12);
+
+  const transactionKindMeta = useMemo(() => {
+    const success = theme.colors.success ?? theme.colors.secondary;
+    const warning = theme.colors.warning ?? theme.colors.tertiary;
+    const info = theme.colors.info ?? theme.colors.primary;
+    return {
+      income:        { icon: "arrow-down-circle",    color: success, bg: withAlpha(success, 0.12) },
+      expense:       { icon: "arrow-up-circle",      color: theme.colors.error, bg: withAlpha(theme.colors.error, 0.12) },
+      bill_payment:  { icon: "receipt-text-outline", color: warning, bg: withAlpha(warning, 0.12) },
+      work_expense:  { icon: "briefcase-outline",    color: info, bg: withAlpha(info, 0.12) },
+      goal_transfer: { icon: "flag-outline",         color: theme.colors.secondary, bg: withAlpha(theme.colors.secondary, 0.12) },
+      goal_refund:   { icon: "flag-remove-outline",  color: success, bg: withAlpha(success, 0.12) },
+    } as const satisfies Record<string, { icon: string; color: string; bg: string }>;
+  }, [theme.colors]);
 
   // ── Animated values ────────────────────────────────────────
   const headerAnim  = useRef(new Animated.Value(0)).current;
@@ -259,34 +276,34 @@ export default function DashboardScreen() {
         opacity: headerAnim,
         transform: [{ translateY: headerAnim.interpolate({ inputRange:[0,1], outputRange:[-30,0] }) }],
       }}>
-        <Animated.View style={[styles.headerWrap, { height: headerHeight }]}>
+        <Animated.View style={[styles.headerWrap, { height: headerHeight, backgroundColor: headerStart }]}>
           <LinearGradient
-            colors={["#1a0533", "#2d1060", "#1e3a8a"]}
+            colors={[headerStart, headerMid, headerEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.header, { paddingTop: 12, flex: 1 }]}
+            style={[styles.header, { paddingTop: 12, flex: 1, shadowColor: headerStart }]}
           >
           {/* شريط التحكم */}
           <View style={styles.headerBar}>
             <View style={styles.headerActions}>
-              <Pressable style={styles.iconBtn} onPress={() => {}}>
-                <IconButton icon="menu" iconColor="rgba(255,255,255,0.8)" size={20} style={styles.noMargin} />
+              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => {}}>
+                <IconButton icon="menu" iconColor={headerIcon} size={20} style={styles.noMargin} />
               </Pressable>
-              <Pressable style={styles.iconBtn} onPress={() => router.push("/reports/current")}>
-                <IconButton icon="chart-box-outline" iconColor="rgba(255,255,255,0.8)" size={20} style={styles.noMargin} />
+              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => router.push("/reports/current")}>
+                <IconButton icon="chart-box-outline" iconColor={headerIcon} size={20} style={styles.noMargin} />
               </Pressable>
             </View>
 
-            <Text style={styles.balanceLabel}>
+            <Text style={[styles.balanceLabel, { color: headerTextMuted }]}>
               {isArabic ? "إجمالي الرصيد" : "Total Balance"}
             </Text>
 
             <View style={styles.headerActions}>
-              <Pressable style={styles.iconBtn} onPress={() => router.push("/bills")}>
-                <IconButton icon="receipt-text-outline" iconColor="rgba(255,255,255,0.8)" size={20} style={styles.noMargin} />
+              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => router.push("/bills")}>
+                <IconButton icon="receipt-text-outline" iconColor={headerIcon} size={20} style={styles.noMargin} />
               </Pressable>
-              <Pressable style={styles.iconBtn} onPress={() => router.push("/work")}>
-                <IconButton icon="briefcase-outline" iconColor="rgba(255,255,255,0.8)" size={20} style={styles.noMargin} />
+              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => router.push("/work")}>
+                <IconButton icon="briefcase-outline" iconColor={headerIcon} size={20} style={styles.noMargin} />
               </Pressable>
             </View>
           </View>
@@ -301,7 +318,7 @@ export default function DashboardScreen() {
               locale={locale}
               currency={currency}
               resetKey={focusTick}
-              textStyle={styles.balanceValue}
+              textStyle={[styles.balanceValue, { color: headerText, textShadowColor: withAlpha(headerText, 0.35) }]}
             />
           </Animated.View>
 
@@ -310,7 +327,7 @@ export default function DashboardScreen() {
             {limitStatus.hasLimit && (
               <View style={styles.limitWrap}>
                 <View style={styles.limitRow}>
-                  <Text style={styles.limitText}>
+                  <Text style={[styles.limitText, { color: headerTextStrong }]}>
                     {limitStatus.isOver
                       ? (isArabic
                           ? `⚠ تجاوزت الحد بـ ${formatMoney(limitStatus.overBy, locale, currency)}`
@@ -319,11 +336,11 @@ export default function DashboardScreen() {
                           ? `متبقي ${formatMoney(limitStatus.remaining ?? 0, locale, currency)}`
                           : `${formatMoney(limitStatus.remaining ?? 0, locale, currency)} left`)}
                   </Text>
-                  <Text style={styles.limitSubText}>
+                  <Text style={[styles.limitSubText, { color: headerTextMuted }]}>
                     {formatMoney(limitStatus.spent, locale, currency)} / {formatMoney(limitStatus.limit, locale, currency)}
                   </Text>
                 </View>
-                <View style={styles.limitTrack}>
+                <View style={[styles.limitTrack, { backgroundColor: headerBorder }]}>
                   <Animated.View style={[styles.limitFill, {
                     width: limitBarAnim.interpolate({
                       inputRange: [0, 1],
@@ -331,7 +348,9 @@ export default function DashboardScreen() {
                     }),
                   }]}>
                     <LinearGradient
-                      colors={limitStatus.isOver ? ["#F87171","#DC2626"] : ["#34D399","#059669"]}
+                      colors={limitStatus.isOver
+                        ? [theme.colors.error, theme.colors.errorContainer ?? theme.colors.error]
+                        : [theme.colors.success ?? theme.colors.secondary, theme.colors.successContainer ?? theme.colors.secondaryContainer]}
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={StyleSheet.absoluteFill}
                     />
@@ -355,38 +374,38 @@ export default function DashboardScreen() {
             {/* كروت الدخل / المصروفات */}
             <View style={styles.summaryRow}>
               {/* المصروفات */}
-              <View style={styles.summaryCard}>
+              <View style={[styles.summaryCard, { borderColor: headerBorder }]}>
                 <LinearGradient
-                  colors={["rgba(248,113,113,0.15)", "rgba(248,113,113,0.05)"]}
+                  colors={[withAlpha(theme.colors.error, 0.15), withAlpha(theme.colors.error, 0.05)]}
                   style={StyleSheet.absoluteFill}
                 />
-                <View style={[styles.summaryIcon, { backgroundColor: "rgba(248,113,113,0.2)" }]}>
-                  <IconButton icon="trending-down" iconColor="#F87171" size={18} style={styles.noMargin} />
+                <View style={[styles.summaryIcon, { backgroundColor: withAlpha(theme.colors.error, 0.2) }]}>
+                  <IconButton icon="trending-down" iconColor={theme.colors.error} size={18} style={styles.noMargin} />
                 </View>
                 <View>
-                  <Text style={styles.summaryCardLabel}>
+                  <Text style={[styles.summaryCardLabel, { color: headerTextMuted }]}>
                     {isArabic ? "المصروفات" : "Expenses"}
                   </Text>
-                  <Text style={[styles.summaryCardValue, { color: "#F87171" }]} numberOfLines={1}>
+                  <Text style={[styles.summaryCardValue, { color: theme.colors.error }]} numberOfLines={1}>
                     {formatMoney(summary?.monthlyExpense ?? 0, locale, currency)}
                   </Text>
                 </View>
               </View>
 
               {/* الدخل */}
-              <View style={styles.summaryCard}>
+              <View style={[styles.summaryCard, { borderColor: headerBorder }]}>
                 <LinearGradient
-                  colors={["rgba(74,222,128,0.15)", "rgba(74,222,128,0.05)"]}
+                  colors={[withAlpha(theme.colors.success ?? theme.colors.secondary, 0.15), withAlpha(theme.colors.success ?? theme.colors.secondary, 0.05)]}
                   style={StyleSheet.absoluteFill}
                 />
-                <View style={[styles.summaryIcon, { backgroundColor: "rgba(74,222,128,0.2)" }]}>
-                  <IconButton icon="trending-up" iconColor="#4ADE80" size={18} style={styles.noMargin} />
+                <View style={[styles.summaryIcon, { backgroundColor: withAlpha(theme.colors.success ?? theme.colors.secondary, 0.2) }]}>
+                  <IconButton icon="trending-up" iconColor={theme.colors.success ?? theme.colors.secondary} size={18} style={styles.noMargin} />
                 </View>
                 <View>
-                  <Text style={styles.summaryCardLabel}>
+                  <Text style={[styles.summaryCardLabel, { color: headerTextMuted }]}>
                     {isArabic ? "الدخل" : "Income"}
                   </Text>
-                  <Text style={[styles.summaryCardValue, { color: "#4ADE80" }]} numberOfLines={1}>
+                  <Text style={[styles.summaryCardValue, { color: theme.colors.success ?? theme.colors.secondary }]} numberOfLines={1}>
                     {formatMoney(summary?.monthlyIncome ?? 0, locale, currency)}
                   </Text>
                 </View>
@@ -438,9 +457,9 @@ export default function DashboardScreen() {
                 {/* الأرقام الكبيرة */}
                 <View style={styles.breakdownRow}>
                   {[
-                    { label: isArabic ? "الدخل" : "Income",   value: dayBreakdown.income,                                          color: theme.colors.primary },
+                    { label: isArabic ? "الدخل" : "Income",   value: dayBreakdown.income,                                          color: theme.colors.success ?? theme.colors.secondary },
                     { label: isArabic ? "المصروفات" : "Expenses", value: dayBreakdown.expense + dayBreakdown.bills + dayBreakdown.work, color: theme.colors.error },
-                    { label: isArabic ? "الصافي" : "Net",      value: dayBreakdown.net,                                             color: dayBreakdown.net >= 0 ? "#4ADE80" : "#F87171", signed: true },
+                    { label: isArabic ? "الصافي" : "Net",      value: dayBreakdown.net,                                             color: dayBreakdown.net >= 0 ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.error, signed: true },
                   ].map((item, idx) => (
                     <View key={idx} style={styles.breakdownItem}>
                       <Text style={[styles.breakdownLabel, { color: theme.colors.onSurfaceVariant }]}>
@@ -497,12 +516,19 @@ export default function DashboardScreen() {
                   ...dayBillInstances.map(i => ({ key: `inst-${i.id}`, name: i.billName||(isArabic?"فاتورة":"Bill"), sub: `${i.status} • ${i.dueDate}${i.billAmount!=null?` • ${formatMoney(i.billAmount,locale,currency)}`:""}`, isPending: false })),
                 ].map((item) => (
                   <View key={item.key} style={[styles.listItem, { borderColor: theme.colors.outlineVariant }]}>
-                    <View style={[styles.listItemIcon, {
-                      backgroundColor: item.isPending ? "rgba(251,146,60,0.12)" : "rgba(96,165,250,0.12)"
-                    }]}>
+                    <View
+                      style={[
+                        styles.listItemIcon,
+                        {
+                          backgroundColor: item.isPending
+                            ? withAlpha(theme.colors.warning ?? theme.colors.tertiary, 0.12)
+                            : withAlpha(theme.colors.info ?? theme.colors.primary, 0.12),
+                        },
+                      ]}
+                    >
                       <IconButton
                         icon={item.isPending ? "clock-alert-outline" : "check-circle-outline"}
-                        iconColor={item.isPending ? "#FB923C" : "#60A5FA"}
+                        iconColor={item.isPending ? (theme.colors.warning ?? theme.colors.tertiary) : (theme.colors.info ?? theme.colors.primary)}
                         size={18} style={styles.noMargin}
                       />
                     </View>
@@ -543,15 +569,31 @@ export default function DashboardScreen() {
             ) : (
               <View style={{ gap: 10 }}>
                 <View style={styles.workRow}>
-                  <View style={[styles.workChip, { backgroundColor: "rgba(96,165,250,0.1)", borderColor: "rgba(96,165,250,0.2)" }]}>
-                    <IconButton icon="clock-outline" iconColor="#60A5FA" size={14} style={styles.noMargin} />
-                    <Text style={[styles.workChipText, { color: "#60A5FA" }]}>
+                  <View
+                    style={[
+                      styles.workChip,
+                      {
+                        backgroundColor: withAlpha(theme.colors.info ?? theme.colors.primary, 0.1),
+                        borderColor: withAlpha(theme.colors.info ?? theme.colors.primary, 0.2),
+                      },
+                    ]}
+                  >
+                    <IconButton icon="clock-outline" iconColor={theme.colors.info ?? theme.colors.primary} size={14} style={styles.noMargin} />
+                    <Text style={[styles.workChipText, { color: theme.colors.info ?? theme.colors.primary }]}>
                       {dayWorkLog.shiftStart || "-"} – {dayWorkLog.shiftEnd || "-"}
                     </Text>
                   </View>
-                  <View style={[styles.workChip, { backgroundColor: "rgba(248,113,113,0.1)", borderColor: "rgba(248,113,113,0.2)" }]}>
-                    <IconButton icon="cash-minus" iconColor="#F87171" size={14} style={styles.noMargin} />
-                    <Text style={[styles.workChipText, { color: "#F87171" }]}>
+                  <View
+                    style={[
+                      styles.workChip,
+                      {
+                        backgroundColor: withAlpha(theme.colors.error, 0.1),
+                        borderColor: withAlpha(theme.colors.error, 0.2),
+                      },
+                    ]}
+                  >
+                    <IconButton icon="cash-minus" iconColor={theme.colors.error} size={14} style={styles.noMargin} />
+                    <Text style={[styles.workChipText, { color: theme.colors.error }]}>
                       {formatMoney(dayWorkLog.totalWorkExpenses, locale, currency)}
                     </Text>
                   </View>
@@ -581,8 +623,8 @@ export default function DashboardScreen() {
             </View>
           ) : (
             dayTransactions.map((item: Transaction, idx) => {
-              const meta = TRANSACTION_KIND_META[item.kind as keyof typeof TRANSACTION_KIND_META] 
-              ?? TRANSACTION_KIND_META.expense;
+              const meta = transactionKindMeta[item.kind as keyof typeof transactionKindMeta] 
+              ?? transactionKindMeta.expense;
 
               const txAnim = new Animated.Value(0);
               return (
@@ -594,7 +636,7 @@ export default function DashboardScreen() {
                     <Pressable
                       onPress={() => router.push({ pathname: "/transactions/[id]", params: { id: String(item.id) } })}
                       style={styles.txPressable}
-                      android_ripple={{ color: "rgba(255,255,255,0.05)" }}
+                      android_ripple={{ color: withAlpha(theme.colors.onSurface, 0.05) }}
                     >
                       {/* أيقونة */}
                       <View style={[styles.txIcon, { backgroundColor: meta.bg }]}>
@@ -610,7 +652,7 @@ export default function DashboardScreen() {
                         </Text>
                       </View>
                       {/* المبلغ */}
-                      <Text style={[styles.txAmount, { color: item.signedAmount >= 0 ? "#4ADE80" : "#F87171" }]}>
+                      <Text style={[styles.txAmount, { color: item.signedAmount >= 0 ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.error }]}>
                         {formatMoney(item.signedAmount, locale, currency, true)}
                       </Text>
                     </Pressable>
@@ -635,33 +677,33 @@ export default function DashboardScreen() {
                 icon: "plus",
                 label: isArabic ? "إضافة دخل" : "Income",
                 onPress: () => router.push("/transactions/add-income"),
-                color: "#4ADE80",
-                labelTextColor: "white",
+                color: theme.colors.success ?? theme.colors.secondary,
+                labelTextColor: theme.colors.onSurface,
                 style: { backgroundColor: "transparent", elevation: 0 },
                 containerStyle: {
-                  backgroundColor: "#1E293B", borderRadius: 20,
+                  backgroundColor: theme.colors.surface, borderRadius: 20,
                   marginBottom: 8, paddingRight: 10,
-                  borderWidth: 1, borderColor: "rgba(74,222,128,0.3)",
+                  borderWidth: 1, borderColor: withAlpha(theme.colors.success ?? theme.colors.secondary, 0.3),
                 },
               },
               {
                 icon: "minus",
                 label: isArabic ? "إضافة مصروف" : "Expense",
                 onPress: () => router.push("/transactions/add-expense"),
-                color: "#F87171",
-                labelTextColor: "white",
+                color: theme.colors.error,
+                labelTextColor: theme.colors.onSurface,
                 style: { backgroundColor: "transparent", elevation: 0 },
                 containerStyle: {
-                  backgroundColor: "#1E293B", borderRadius: 20,
+                  backgroundColor: theme.colors.surface, borderRadius: 20,
                   marginBottom: 8, paddingRight: 10,
-                  borderWidth: 1, borderColor: "rgba(248,113,113,0.3)",
+                  borderWidth: 1, borderColor: withAlpha(theme.colors.error, 0.3),
                 },
               },
             ]}
             onStateChange={({ open }) => setIsOpen(open)}
             style={{ paddingBottom: 90 }}
             fabStyle={{ backgroundColor: theme.colors.primary, borderRadius: 18, elevation: 6 }}
-            backdropColor="rgba(0,0,0,0.8)"
+            backdropColor={withAlpha(theme.colors.scrim ?? theme.colors.onBackground, 0.8)}
           />
         </Portal>
       )}
@@ -678,14 +720,12 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
     overflow: "hidden",
-    backgroundColor: "#1a0533",
   },
   header: {
     paddingTop: 48,
     paddingBottom: 8,
     gap: 14,
     // تأثير shadow تحت الهيدر
-    shadowColor: "#1a0533",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
@@ -701,13 +741,11 @@ const styles = StyleSheet.create({
   iconBtn: {
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.08)",
     marginHorizontal: 2,
   },
   noMargin: { margin: 0 },
 
   balanceLabel: {
-    color: "rgba(255,255,255,0.55)",
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -716,14 +754,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   balanceValue: {
-    color: "#fff",
     fontSize: 36,
     fontWeight: "900",
     textAlign: "center",
     letterSpacing: -0.5,
     paddingHorizontal: 16,
-    // text shadow خفيف
-    textShadowColor: "rgba(99,102,241,0.5)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 12,
   },
@@ -731,11 +766,10 @@ const styles = StyleSheet.create({
   // ── Limit bar ──
   limitWrap: { paddingHorizontal: 20, gap: 6 },
   limitRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  limitText:    { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "700" },
-  limitSubText: { color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: "600" },
+  limitText:    { fontSize: 12, fontWeight: "700" },
+  limitSubText: { fontSize: 10, fontWeight: "600" },
   limitTrack: {
     height: 6, borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.12)",
     overflow: "hidden",
   },
   limitFill: { height: "100%", borderRadius: 999, overflow: "hidden" },
@@ -751,11 +785,11 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
     paddingVertical: 12, paddingHorizontal: 14,
     borderRadius: 20,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
     overflow: "hidden",
   },
   summaryIcon: { borderRadius: 10, overflow: "hidden" },
-  summaryCardLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" },
+  summaryCardLabel: { fontSize: 11, fontWeight: "700" },
   summaryCardValue: { fontSize: 15, fontWeight: "900" },
 
   // ── Scroll ──

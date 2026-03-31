@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useTheme } from "react-native-paper";
+import { withAlpha } from "@/src/utils/colors";
 
 type DatePickerFieldProps = {
   label: string;
@@ -44,7 +45,14 @@ export function DatePickerField({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 16 }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: withAlpha(theme.colors.backdrop ?? theme.colors.scrim ?? theme.colors.onBackground, 0.6),
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
           <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <Text style={{ color: theme.colors.onSurface, fontWeight: "800" }}>{label}</Text>

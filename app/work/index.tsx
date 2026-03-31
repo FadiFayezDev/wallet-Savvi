@@ -100,11 +100,37 @@ export default function WorkScreen() {
   );
 
   const todayStatus = useMemo(() => {
-    if (!isTodayWorkDay) return { key: "off", label: isAr ? "إجازة" : "Off day", color: "#64748B" };
-    if (!todayLog) return { key: "pending", label: isAr ? "معلّق" : "Pending", color: "#F59E0B" };
-    if (todayLog.note === WORK_SKIP_NOTE) return { key: "skipped", label: isAr ? "تم الاستثناء" : "Skipped", color: "#94A3B8" };
-    return { key: "logged", label: isAr ? "تم الخصم" : "Applied", color: "#22C55E" };
-  }, [isTodayWorkDay, todayLog, isAr]);
+    if (!isTodayWorkDay) {
+      return {
+        key: "off",
+        label: isAr ? "إجازة" : "Off day",
+        color: theme.colors.onSurfaceVariant,
+        onColor: theme.colors.surface,
+      };
+    }
+    if (!todayLog) {
+      return {
+        key: "pending",
+        label: isAr ? "معلّق" : "Pending",
+        color: theme.colors.warning,
+        onColor: theme.colors.onWarning,
+      };
+    }
+    if (todayLog.note === WORK_SKIP_NOTE) {
+      return {
+        key: "skipped",
+        label: isAr ? "تم الاستثناء" : "Skipped",
+        color: theme.colors.iconMuted ?? theme.colors.onSurfaceVariant,
+        onColor: theme.colors.surface,
+      };
+    }
+    return {
+      key: "logged",
+      label: isAr ? "تم الخصم" : "Applied",
+      color: theme.colors.success,
+      onColor: theme.colors.onSuccess,
+    };
+  }, [isTodayWorkDay, todayLog, isAr, theme.colors]);
 
   const dayName = (day: number) => (isAr ? dayLabelsAr[day] : dayLabels[day]);
   const formatTime = (value: string | null) => (value ? formatTimeLabel(value, timeFormat, locale) : "-");
@@ -225,16 +251,30 @@ export default function WorkScreen() {
       contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 40, gap: 16 }}
       showsVerticalScrollIndicator={false}
     >
-      <LinearGradient colors={["#0b1220", "#0f1a2e", "#0b1220"]} style={styles.hero}>
+      <LinearGradient
+        colors={[
+          theme.colors.headerGradientStart,
+          theme.colors.headerGradientMid,
+          theme.colors.headerGradientEnd,
+        ]}
+        style={styles.hero}
+      >
         <View style={styles.heroTop}>
-          <Pressable onPress={() => router.back()} style={styles.iconChip}>
-            <IconButton icon={isAr ? "arrow-right" : "arrow-left"} iconColor="#E2E8F0" size={18} style={styles.noMargin} />
+          <Pressable onPress={() => router.back()} style={[styles.iconChip, { backgroundColor: withAlpha(theme.colors.headerText, 0.12) }]}>
+            <IconButton
+              icon={isAr ? "arrow-right" : "arrow-left"}
+              iconColor={theme.colors.headerIcon}
+              size={18}
+              style={styles.noMargin}
+            />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>{isAr ? "الشغل والمصاريف" : "Work & Expenses"}</Text>
-            <Text style={styles.heroSubtitle}>
-              {isAr ? "تحكم ذكي في يومك — خصم مرن عند الحاجة" : "Smart control of your work day expenses"}
+            <Text style={[styles.heroTitle, { color: theme.colors.headerText }]}>
+              {isAr ? "الشغل والمصاريف" : "Work & Expenses"}
             </Text>
+              <Text style={[styles.heroSubtitle, { color: withAlpha(theme.colors.headerText, 0.65) }]}>
+                {isAr ? "تحكم ذكي في يومك — خصم مرن عند الحاجة" : "Smart control of your work day expenses"}
+              </Text>
           </View>
         </View>
 
@@ -244,11 +284,13 @@ export default function WorkScreen() {
               {isAr ? "حالة اليوم:" : "Status:"} {todayStatus.label}
             </Text>
           </View>
-          <View style={[styles.totalPill, { backgroundColor: withAlpha("#22C55E", 0.15) }]}>
-            <Text style={styles.totalText}>
+          <View style={[styles.totalPill, { backgroundColor: withAlpha(theme.colors.success, 0.15) }]}>
+            <Text style={[styles.totalText, { color: theme.colors.headerText }]}>
               {formatMoney(activeExpensesTotal, localeKey, currency)}
             </Text>
-            <Text style={styles.totalSub}>{isAr ? "إجمالي مصاريف اليوم" : "Daily total"}</Text>
+            <Text style={[styles.totalSub, { color: withAlpha(theme.colors.headerText, 0.6) }]}>
+              {isAr ? "إجمالي مصاريف اليوم" : "Daily total"}
+            </Text>
           </View>
         </View>
       </LinearGradient>
@@ -291,10 +333,10 @@ export default function WorkScreen() {
                 disabled={!isTodayWorkDay || Boolean(todayLog)}
                 style={[
                   styles.actionBtn,
-                  { backgroundColor: "#22C55E", opacity: !isTodayWorkDay || todayLog ? 0.6 : 1 },
+                  { backgroundColor: theme.colors.success, opacity: !isTodayWorkDay || todayLog ? 0.6 : 1 },
                 ]}
               >
-                  <Text style={[styles.actionBtnText, { color: "#0B1220" }]}>
+                  <Text style={[styles.actionBtnText, { color: theme.colors.onSuccess }]}>
                     {isAr ? "خصم قياسي" : "Apply standard"}
                   </Text>
               </Pressable>
@@ -303,10 +345,10 @@ export default function WorkScreen() {
                 disabled={!isTodayWorkDay || Boolean(todayLog)}
                 style={[
                   styles.actionBtn,
-                  { backgroundColor: "#334155", opacity: !isTodayWorkDay || todayLog ? 0.6 : 1 },
+                  { backgroundColor: theme.colors.warning, opacity: !isTodayWorkDay || todayLog ? 0.6 : 1 },
                 ]}
               >
-                  <Text style={[styles.actionBtnText, { color: "#F8FAFC" }]}>
+                  <Text style={[styles.actionBtnText, { color: theme.colors.onWarning }]}>
                     {isAr ? "استثناء اليوم" : "Skip today"}
                   </Text>
               </Pressable>
@@ -395,8 +437,8 @@ export default function WorkScreen() {
                   ]}
                 />
 
-                <Pressable onPress={onLogCustomDay} style={[styles.actionBtn, { backgroundColor: "#0EA5E9" }]}>
-                  <Text style={[styles.actionBtnText, { color: "#F8FAFC" }]}>
+                <Pressable onPress={onLogCustomDay} style={[styles.actionBtn, { backgroundColor: theme.colors.info }]}>
+                  <Text style={[styles.actionBtnText, { color: theme.colors.onInfo }]}>
                     {isAr ? "تسجيل اليوم" : "Log day"}
                   </Text>
                 </Pressable>
@@ -423,12 +465,12 @@ export default function WorkScreen() {
                     style={[
                       styles.dayChip,
                       {
-                        backgroundColor: isActive ? "#0EA5E9" : theme.colors.surfaceVariant,
-                        borderColor: isWork ? "#22C55E" : "transparent",
+                        backgroundColor: isActive ? theme.colors.info : theme.colors.surfaceVariant,
+                        borderColor: isWork ? theme.colors.success : "transparent",
                       },
                     ]}
                   >
-                    <Text style={[styles.dayChipText, { color: isActive ? "#fff" : theme.colors.onSurfaceVariant }]}>
+                    <Text style={[styles.dayChipText, { color: isActive ? theme.colors.onInfo : theme.colors.onSurfaceVariant }]}>
                       {dayName(day)}
                     </Text>
                   </Pressable>
@@ -467,10 +509,10 @@ export default function WorkScreen() {
                 }}
                 style={[
                   styles.togglePill,
-                  { backgroundColor: selectedSchedule?.isWorkDay ? "#22C55E" : theme.colors.surfaceVariant },
+                  { backgroundColor: selectedSchedule?.isWorkDay ? theme.colors.success : theme.colors.surfaceVariant },
                 ]}
               >
-                <Text style={styles.toggleText}>
+                <Text style={[styles.toggleText, { color: selectedSchedule?.isWorkDay ? theme.colors.onSuccess : theme.colors.onSurfaceVariant }]}>
                   {selectedSchedule?.isWorkDay ? (isAr ? "يوم عمل" : "Work day") : (isAr ? "إجازة" : "Off")}
                 </Text>
               </Pressable>
@@ -511,8 +553,8 @@ export default function WorkScreen() {
               </View>
             </View>
 
-            <Pressable onPress={onSaveSchedule} style={[styles.actionBtn, { backgroundColor: "#22C55E" }]}>
-              <Text style={[styles.actionBtnText, { color: "#0B1220" }]}>
+            <Pressable onPress={onSaveSchedule} style={[styles.actionBtn, { backgroundColor: theme.colors.success }]}>
+              <Text style={[styles.actionBtnText, { color: theme.colors.onSuccess }]}>
                 {isAr ? "حفظ اليوم" : "Save day"}
               </Text>
             </Pressable>
@@ -544,8 +586,8 @@ export default function WorkScreen() {
               required
               locale={locale}
             />
-            <Pressable onPress={onAddExpense} style={[styles.actionBtn, { backgroundColor: "#0EA5E9" }]}>
-              <Text style={[styles.actionBtnText, { color: "#F8FAFC" }]}>
+            <Pressable onPress={onAddExpense} style={[styles.actionBtn, { backgroundColor: theme.colors.info }]}>
+              <Text style={[styles.actionBtnText, { color: theme.colors.onInfo }]}>
                 {isAr ? "إضافة" : "Add"}
               </Text>
             </Pressable>
@@ -594,10 +636,15 @@ export default function WorkScreen() {
                       }}
                       style={[
                         styles.badge,
-                        { backgroundColor: row.isActive ? "#22C55E" : theme.colors.surfaceVariant },
+                        { backgroundColor: row.isActive ? theme.colors.success : theme.colors.surfaceVariant },
                       ]}
                     >
-                      <Text style={[styles.badgeText, { color: row.isActive ? "#0B1220" : theme.colors.onSurfaceVariant }]}>
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          { color: row.isActive ? theme.colors.onSuccess : theme.colors.onSurfaceVariant },
+                        ]}
+                      >
                         {row.isActive ? (isAr ? "نشط" : "Active") : (isAr ? "متوقف" : "Inactive")}
                       </Text>
                     </Pressable>
@@ -634,8 +681,18 @@ export default function WorkScreen() {
                         <Text style={[styles.expenseMeta, { color: theme.colors.onSurfaceVariant }]}>{row.note}</Text>
                       ) : null}
                     </View>
-                    <View style={[styles.badge, { backgroundColor: row.note === WORK_SKIP_NOTE ? "#94A3B8" : "#22C55E" }]}>
-                      <Text style={styles.badgeText}>
+                    <View
+                      style={[
+                        styles.badge,
+                        { backgroundColor: row.note === WORK_SKIP_NOTE ? theme.colors.surfaceVariant : theme.colors.success },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          { color: row.note === WORK_SKIP_NOTE ? theme.colors.onSurfaceVariant : theme.colors.onSuccess },
+                        ]}
+                      >
                         {row.note === WORK_SKIP_NOTE
                           ? (isAr ? "مستثنى" : "Skipped")
                           : formatMoney(row.totalWorkExpenses, localeKey, currency)}
@@ -665,17 +722,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   heroTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  heroTitle: { fontSize: 22, fontWeight: "900", color: "#F8FAFC" },
-  heroSubtitle: { fontSize: 12, color: "rgba(248,250,252,0.65)", marginTop: 2 },
+  heroTitle: { fontSize: 22, fontWeight: "900" },
+  heroSubtitle: { fontSize: 12, marginTop: 2 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  iconChip: { borderRadius: 12, backgroundColor: "rgba(255,255,255,0.12)" },
+  iconChip: { borderRadius: 12 },
   noMargin: { margin: 0 },
 
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   statusText: { fontSize: 12, fontWeight: "700" },
   totalPill: { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8 },
-  totalText: { fontSize: 14, fontWeight: "900", color: "#E2E8F0" },
-  totalSub: { fontSize: 10, color: "rgba(226,232,240,0.6)" },
+  totalText: { fontSize: 14, fontWeight: "900" },
+  totalSub: { fontSize: 10 },
 
   segmentWrap: {
     flexDirection: "row",
@@ -734,7 +791,7 @@ const styles = StyleSheet.create({
   dayChipText: { fontSize: 12, fontWeight: "800" },
 
   togglePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  toggleText: { color: "#fff", fontWeight: "800", fontSize: 11 },
+  toggleText: { fontWeight: "800", fontSize: 11 },
 
   noteInput: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12 },
 
@@ -754,7 +811,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  badgeText: { fontSize: 11, fontWeight: "800", color: "#0B1220" },
+  badgeText: { fontSize: 11, fontWeight: "800" },
 
   logRow: {
     flexDirection: "row",

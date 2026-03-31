@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { useTheme } from 'react-native-paper';
 
 import { useAppStore } from '@/src/stores/appStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
@@ -7,6 +8,7 @@ import { useSettingsStore } from '@/src/stores/settingsStore';
 export function LockScreen() {
   const [pin, setPin] = useState('');
   const [attempts, setAttempts] = useState(0);
+  const theme = useTheme();
 
   const unlockWithPin = useAppStore((state) => state.unlockWithPin);
   const unlockWithBiometric = useAppStore((state) => state.unlockWithBiometric);
@@ -37,9 +39,14 @@ export function LockScreen() {
   };
 
   return (
-    <View className="absolute inset-0 z-50 items-center justify-center bg-slate-950/95 p-6">
-      <View className="w-full max-w-sm rounded-2xl bg-slate-900 p-5">
-        <Text className="text-xl font-bold text-white">Wallet Locked</Text>
+    <View
+      className="absolute inset-0 z-50 items-center justify-center p-6"
+      style={{ backgroundColor: theme.colors.backdrop }}
+    >
+      <View className="w-full max-w-sm rounded-2xl p-5" style={{ backgroundColor: theme.colors.surface }}>
+        <Text className="text-xl font-bold" style={{ color: theme.colors.onSurface }}>
+          Wallet Locked
+        </Text>
 
         {(lockMethod === 'pin' || lockMethod === 'biometric') && (
           <View className="mt-4 gap-3">
@@ -49,11 +56,14 @@ export function LockScreen() {
               secureTextEntry
               keyboardType="number-pad"
               placeholder="Enter PIN"
-              placeholderTextColor="#64748b"
-              className="rounded-xl bg-slate-800 px-4 py-3 text-white"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              className="rounded-xl px-4 py-3"
+              style={{ backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface }}
             />
-            <Pressable onPress={onUnlockPin} className="rounded-xl bg-emerald-500 py-3">
-              <Text className="text-center font-semibold text-white">Unlock with PIN</Text>
+            <Pressable onPress={onUnlockPin} className="rounded-xl py-3" style={{ backgroundColor: theme.colors.success }}>
+              <Text className="text-center font-semibold" style={{ color: theme.colors.onSuccess }}>
+                Unlock with PIN
+              </Text>
             </Pressable>
           </View>
         )}
@@ -63,8 +73,12 @@ export function LockScreen() {
             onPress={() => {
               unlockWithBiometric().catch(() => undefined);
             }}
-            className="mt-3 rounded-xl bg-slate-700 py-3">
-            <Text className="text-center font-semibold text-white">Unlock with Biometric</Text>
+            className="mt-3 rounded-xl py-3"
+            style={{ backgroundColor: theme.colors.surfaceVariant }}
+          >
+            <Text className="text-center font-semibold" style={{ color: theme.colors.onSurface }}>
+              Unlock with Biometric
+            </Text>
           </Pressable>
         )}
       </View>

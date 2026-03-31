@@ -12,30 +12,9 @@ import { categoryService } from '@/src/services/categoryService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Category } from '@/src/types/domain';
 import { confirmAction } from '@/src/utils/confirm';
+import { withAlpha } from '@/src/utils/colors';
 
 type CategoryTab = 'expense' | 'income';
-
-const withAlpha = (color: string, alpha: number) => {
-  if (color.startsWith('#')) {
-    const hex = color.slice(1);
-    const full = hex.length === 3
-      ? hex.split('').map((c) => c + c).join('')
-      : hex;
-    if (full.length >= 6) {
-      const r = parseInt(full.slice(0, 2), 16);
-      const g = parseInt(full.slice(2, 4), 16);
-      const b = parseInt(full.slice(4, 6), 16);
-      return `rgba(${r},${g},${b},${alpha})`;
-    }
-  }
-  if (color.startsWith('rgb(')) {
-    return color.replace('rgb(', 'rgba(').replace(')', `,${alpha})`);
-  }
-  if (color.startsWith('rgba(')) {
-    return color.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^\)]+\)/, `rgba($1,$2,$3,${alpha})`);
-  }
-  return color;
-};
 
 // ── بطاقة فئة واحدة ─────────────────────────────────────────────
 function CategoryCard({
@@ -107,10 +86,10 @@ export default function CategoriesTabScreen() {
   const tabAnim = useRef(new Animated.Value(0)).current; // 0=expense, 1=income
   const didInitFromParam = useRef(false);
 
-  const expenseColor = '#F87171';
-  const incomeColor  = '#4ADE80';
-  const expenseOn    = '#111827';
-  const incomeOn     = '#064E3B';
+  const expenseColor = theme.colors.error;
+  const incomeColor  = theme.colors.success;
+  const expenseOn    = theme.colors.onError;
+  const incomeOn     = theme.colors.onSuccess;
   const activeColor  = activeTab === 'income' ? incomeColor : expenseColor;
   const activeOn     = activeTab === 'income' ? incomeOn : expenseOn;
 

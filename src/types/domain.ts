@@ -3,7 +3,7 @@ export type CategoryType = 'income' | 'expense' | 'both';
 export type GoalStatus = 'active' | 'completed' | 'cancelled';
 export type LockMethod = 'none' | 'pin' | 'biometric';
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type ThemeSource = 'material' | 'fixed' | 'mono';
+export type ThemeSource = 'material' | 'fixed' | 'mono' | 'custom' | 'palette';
 export type TimeFormat = '12h' | '24h';
 export type BillStatus = 'pending' | 'paid' | 'skipped';
 
@@ -92,7 +92,74 @@ export interface AppSettings {
   notifyWorkEnabled: boolean;
   themeMode: ThemeMode;
   themeSource: ThemeSource;
+  activeThemeId: number | null;
+  activePaletteThemeId: number | null;
   timeFormat: TimeFormat;
+  updatedAt: string;
+}
+
+export interface CustomTheme {
+  id: number;
+  name: string;
+  primary: string;
+  secondary: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaletteThemeColors {
+  primary: string;
+  onPrimary: string;
+  primaryContainer: string;
+  onPrimaryContainer: string;
+  secondary: string;
+  onSecondary: string;
+  secondaryContainer: string;
+  onSecondaryContainer: string;
+  tertiary: string;
+  onTertiary: string;
+  tertiaryContainer: string;
+  onTertiaryContainer: string;
+  background: string;
+  onBackground: string;
+  surface: string;
+  onSurface: string;
+  surfaceVariant: string;
+  onSurfaceVariant: string;
+  outline: string;
+  outlineVariant: string;
+  error: string;
+  onError: string;
+  errorContainer: string;
+  onErrorContainer: string;
+  success: string;
+  onSuccess: string;
+  successContainer: string;
+  onSuccessContainer: string;
+  warning: string;
+  onWarning: string;
+  warningContainer: string;
+  onWarningContainer: string;
+  info: string;
+  onInfo: string;
+  infoContainer: string;
+  onInfoContainer: string;
+  headerGradientStart: string;
+  headerGradientMid: string;
+  headerGradientEnd: string;
+  headerText: string;
+  headerIcon: string;
+  iconPrimary: string;
+  iconSecondary: string;
+  iconMuted: string;
+}
+
+export interface PaletteTheme {
+  id: number;
+  name: string;
+  light: PaletteThemeColors;
+  dark: PaletteThemeColors;
+  createdAt: string;
   updatedAt: string;
 }
 

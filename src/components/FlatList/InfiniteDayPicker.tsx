@@ -41,6 +41,7 @@ interface DayItemProps {
   primaryColor:   string;
   onPrimaryColor: string;
   surfaceVariant: string;
+  outlineVariant: string;
   onSurfaceColor: string;
   monthNames:     string[];
   onPress:        (date: Date) => void;
@@ -48,7 +49,7 @@ interface DayItemProps {
 }
 
 const DayItem = React.memo(
-  ({ date, isSelected, isToday, primaryColor, onPrimaryColor, surfaceVariant, onSurfaceColor, monthNames, onPress, onLongPress }: DayItemProps) => {
+  ({ date, isSelected, isToday, primaryColor, onPrimaryColor, surfaceVariant, outlineVariant, onSurfaceColor, monthNames, onPress, onLongPress }: DayItemProps) => {
     const scaleAnim   = useRef(new Animated.Value(isSelected ? 1 : 0.88)).current;
     const opacityAnim = useRef(new Animated.Value(isSelected ? 1 : 0.45)).current;
 
@@ -81,7 +82,7 @@ const DayItem = React.memo(
           style={[
             styles.dayInner,
             isSelected && [{ backgroundColor: primaryColor, shadowColor: primaryColor }, styles.selectedInner],
-            isToday && !isSelected && [styles.todayInner, { backgroundColor: surfaceVariant }],
+            isToday && !isSelected && [styles.todayInner, { backgroundColor: surfaceVariant, borderColor: outlineVariant }],
             { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
           ]}
         >
@@ -130,7 +131,8 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
 }) => {
   const primaryColor    = theme?.colors?.primary        ?? '#4593f2';
   const onPrimaryColor  = theme?.colors?.onPrimary      ?? '#ffffff';
-  const surfaceVariant  = theme?.colors?.surfaceVariant ?? 'rgba(255,255,255,0.08)';
+  const surfaceVariant  = theme?.colors?.surfaceVariant ?? '#1F2937';
+  const outlineVariant  = theme?.colors?.outlineVariant ?? '#374151';
   const onSurfaceColor  = theme?.colors?.onSurface      ?? '#ffffff';
   const today = useMemo(() => {
     const d = new Date();
@@ -191,13 +193,14 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
         primaryColor={primaryColor}
         onPrimaryColor={onPrimaryColor}
         surfaceVariant={surfaceVariant}
+        outlineVariant={outlineVariant}
         onSurfaceColor={onSurfaceColor}
         monthNames={monthNames}
         onPress={handleDayPress}
         onLongPress={resetToToday}
       />
     ),
-    [selectedDate, today, primaryColor, onPrimaryColor, surfaceVariant, onSurfaceColor, monthNames, handleDayPress, resetToToday],
+    [selectedDate, today, primaryColor, onPrimaryColor, surfaceVariant, outlineVariant, onSurfaceColor, monthNames, handleDayPress, resetToToday],
   );
 
   const keyExtractor  = useCallback((_: Date, i: number) => String(i), []);
@@ -262,15 +265,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   todayInner: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
   },
   dayLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
     textAlign: 'center',
   },
   todayDot: {

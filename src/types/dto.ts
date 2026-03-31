@@ -108,5 +108,7 @@ export interface BackupPayloadV1 {
     daily_work_expenses?: Record<string, unknown>[];
     work_days_log?: Record<string, unknown>[];
     daily_spending_summary?: Record<string, unknown>[];
+    custom_themes?: Record<string, unknown>[];
+    palette_themes?: Record<string, unknown>[];
   };
 }

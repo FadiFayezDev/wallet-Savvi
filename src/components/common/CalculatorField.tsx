@@ -3,6 +3,7 @@ import { Modal, Pressable, Text, View } from "react-native";
 import { useTheme } from "react-native-paper";
 
 import { CalculatorKeyboard, evaluateExpression } from "./CalculatorKeyboard";
+import { withAlpha } from "@/src/utils/colors";
 
 type CalculatorFieldProps = {
   label: string;
@@ -53,7 +54,13 @@ export function CalculatorField({
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: withAlpha(theme.colors.backdrop ?? theme.colors.scrim ?? theme.colors.onBackground, 0.6),
+            justifyContent: "flex-end",
+          }}
+        >
           <View style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Text style={{ color: theme.colors.onSurface, fontWeight: "800" }}>{label}</Text>

@@ -6,6 +6,7 @@ import {
 
 import { useTranslation } from 'react-i18next';
 import { IconButton, useTheme } from 'react-native-paper';
+import { useRouter } from 'expo-router';
 
 import { CalculatorField } from '@/src/components/common/CalculatorField';
 import { backupService } from '@/src/services/backupService';
@@ -152,7 +153,7 @@ function SelectDropdown({
 // ── الشاشة ───────────────────────────────────────────────────────
 const lockMethods:  ('none' | 'pin' | 'biometric')[]    = ['none', 'pin', 'biometric'];
 const themeModes:   ('light' | 'dark' | 'system')[]     = ['light', 'dark', 'system'];
-const themeSources: ('material' | 'fixed' | 'mono')[]   = ['material', 'fixed', 'mono'];
+const themeSources: ('material' | 'fixed' | 'mono' | 'custom' | 'palette')[]   = ['material', 'fixed', 'mono', 'custom', 'palette'];
 const timeFormats:  ('12h' | '24h')[]                   = ['12h', '24h'];
 const locales:      ('ar' | 'en')[]                     = ['ar', 'en'];
 
@@ -160,6 +161,7 @@ export default function SettingsTab() {
   const { t, i18n }                        = useTranslation();
   const { settings, loadSettings, patchSettings } = useSettingsStore();
   const theme                              = useTheme();
+  const router                             = useRouter();
   const [pin,             setPin]             = useState('');
   const [busy,            setBusy]            = useState(false);
   const [dailyLimitInput, setDailyLimitInput] = useState('');
@@ -192,7 +194,11 @@ export default function SettingsTab() {
     ? 'Material You'
     : themeSourceValue === 'mono'
       ? (isAr ? 'أبيض وأسود' : 'Black & White')
-      : (isAr ? 'ثابت' : 'Fixed');
+      : themeSourceValue === 'custom'
+        ? (isAr ? 'مخصص' : 'Custom')
+        : themeSourceValue === 'palette'
+          ? (isAr ? 'لوحة ألوان' : 'Palette')
+        : (isAr ? 'ثابت' : 'Fixed');
   const selectedTimeFormatLabel = timeFormatValue === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h');
   const selectedLockLabel = t(`settings.${settings.lockMethod}`);
 
@@ -289,7 +295,23 @@ export default function SettingsTab() {
           isOpen={openSelect === 'themeSource'}
           onToggle={() => toggleSelect('themeSource')}
           onSelect={(source) => {
-            patchSettings({ themeSource: source as 'material' | 'fixed' }).catch(() => undefined);
+            if (source === 'custom' && !settings.activeThemeId) {
+              Alert.alert(
+                isAr ? 'اختر ثيم أولاً' : 'Pick a theme first',
+                isAr ? 'افتح مكتبة الثيمات واختر ثيمًا مخصصًا لتفعيله.' : 'Open theme library and pick a custom theme to enable it.',
+              );
+              setOpenSelect(null);
+              return;
+            }
+            if (source === 'palette' && !settings.activePaletteThemeId) {
+              Alert.alert(
+                isAr ? 'اختر ثيم لوحة أولاً' : 'Pick a palette first',
+                isAr ? 'افتح مكتبة لوحة الألوان واختر ثيمًا لتفعيله.' : 'Open palette library and pick a palette theme to enable it.',
+              );
+              setOpenSelect(null);
+              return;
+            }
+            patchSettings({ themeSource: source as 'material' | 'fixed' | 'mono' | 'custom' | 'palette' }).catch(() => undefined);
             setOpenSelect(null);
           }}
           options={themeSources.map((source) => ({
@@ -298,8 +320,40 @@ export default function SettingsTab() {
               ? 'Material You'
               : source === 'mono'
                 ? (isAr ? 'أبيض وأسود' : 'Black & White')
-                : (isAr ? 'ثابت' : 'Fixed'),
+                : source === 'custom'
+                  ? (isAr ? 'مخصص' : 'Custom')
+                  : source === 'palette'
+                    ? (isAr ? 'لوحة ألوان' : 'Palette')
+                  : (isAr ? 'ثابت' : 'Fixed'),
           }))}
+        />
+      </SettingSection>
+
+      {/* ── مكتبة الثيمات ── */}
+      <SettingSection
+        icon="palette-swatch-outline"
+        title={isAr ? 'الثيمات المخصصة' : 'Custom Themes'}
+        subtitle={isAr ? 'إنشاء / استيراد / تصدير الثيمات' : 'Create, import, and export themes'}
+      >
+        <ActionButton
+          label={isAr ? 'إدارة الثيمات' : 'Manage themes'}
+          icon="palette-outline"
+          variant="surface"
+          onPress={() => router.push('/themes')}
+        />
+      </SettingSection>
+
+      {/* ── مكتبة لوحات الألوان ── */}
+      <SettingSection
+        icon="palette"
+        title={isAr ? 'لوحات الألوان' : 'Palette Themes'}
+        subtitle={isAr ? 'ثيم كامل لكل الألوان' : 'Full theme for every color'}
+      >
+        <ActionButton
+          label={isAr ? 'إدارة لوحات الألوان' : 'Manage palettes'}
+          icon="palette-outline"
+          variant="surface"
+          onPress={() => router.push('/themes/palette')}
         />
       </SettingSection>
 

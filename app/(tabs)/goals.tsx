@@ -12,6 +12,7 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { goalService } from '@/src/services/goalService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Goal } from '@/src/types/domain';
+import { withAlpha } from '@/src/utils/colors';
 import { formatMoney } from '@/src/utils/money';
 
 // ── بطاقة هدف واحد مع أنيميشن ──────────────────────────────────
@@ -39,7 +40,7 @@ function GoalCard({
   const onPressIn  = () => Animated.spring(scaleRef, { toValue: 0.97, useNativeDriver: true, tension: 200, friction: 10 }).start();
   const onPressOut = () => Animated.spring(scaleRef, { toValue: 1,    useNativeDriver: true, tension: 200, friction: 10 }).start();
 
-  const barColor = isDone ? '#4ADE80' : theme.colors.primary;
+  const barColor = isDone ? theme.colors.success : theme.colors.primary;
 
   return (
     <Animated.View style={{
@@ -64,9 +65,11 @@ function GoalCard({
             {goal.name}
           </Text>
           <View style={[styles.percentBadge, {
-            backgroundColor: isDone ? 'rgba(74,222,128,0.12)' : `${theme.colors.primary}18`,
+            backgroundColor: isDone
+              ? withAlpha(theme.colors.success, 0.12)
+              : withAlpha(theme.colors.primary, 0.12),
           }]}>
-            <Text style={[styles.percentText, { color: isDone ? '#4ADE80' : theme.colors.primary }]}>
+            <Text style={[styles.percentText, { color: isDone ? theme.colors.success : theme.colors.primary }]}>
               {Math.round(progress * 100)}%
             </Text>
           </View>
@@ -88,7 +91,7 @@ function GoalCard({
         </View>
 
         {isDone && (
-          <Text style={styles.doneTag}>✓ مكتمل</Text>
+          <Text style={[styles.doneTag, { color: theme.colors.success }]}>✓ مكتمل</Text>
         )}
       </Pressable>
     </Animated.View>
@@ -247,6 +250,6 @@ const styles = StyleSheet.create({
   moneyLabel: { fontSize: 12, fontWeight: '600' },
   doneTag: {
     marginTop: 8, alignSelf: 'flex-start',
-    color: '#4ADE80', fontSize: 11, fontWeight: '700',
+    fontSize: 11, fontWeight: '700',
   },
 });

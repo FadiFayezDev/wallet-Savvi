@@ -28,6 +28,10 @@ import { LockScreen } from "@/src/components/common/LockScreen";
 import { useAppStore } from "@/src/stores/appStore";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import { notificationService } from "@/src/services/notificationService";
+import { themeService } from "@/src/services/themeService";
+import { paletteThemeService } from "@/src/services/paletteThemeService";
+import type { CustomTheme, PaletteTheme } from "@/src/types/domain";
+import { deriveCustomThemeColors, mixColors } from "@/src/utils/colors";
 import { useRouter } from "expo-router";
 import "react-native-reanimated";
 import "./global.css";
@@ -43,6 +47,8 @@ export default function RootLayout() {
   const settings = useSettingsStore((state) => state.settings);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const [systemPalette, setSystemPalette] = useState<any | null>(null);
+  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null);
+  const [paletteTheme, setPaletteTheme] = useState<PaletteTheme | null>(null);
   const bootstrap = useAppStore((state) => state.bootstrap);
   const isReady = useAppStore((state) => state.isReady);
   const router = useRouter();
@@ -136,6 +142,30 @@ export default function RootLayout() {
   }, [settings, systemScheme]);
 
   const themeSource = settings?.themeSource ?? "material";
+
+  useEffect(() => {
+    let isAlive = true;
+    if (themeSource === "custom" && settings?.activeThemeId) {
+      themeService.getTheme(settings.activeThemeId)
+        .then((theme) => { if (isAlive) setCustomTheme(theme); })
+        .catch(() => { if (isAlive) setCustomTheme(null); });
+    } else {
+      setCustomTheme(null);
+    }
+    return () => { isAlive = false; };
+  }, [themeSource, settings?.activeThemeId, settings?.updatedAt]);
+
+  useEffect(() => {
+    let isAlive = true;
+    if (themeSource === "palette" && settings?.activePaletteThemeId) {
+      paletteThemeService.getTheme(settings.activePaletteThemeId)
+        .then((theme) => { if (isAlive) setPaletteTheme(theme); })
+        .catch(() => { if (isAlive) setPaletteTheme(null); });
+    } else {
+      setPaletteTheme(null);
+    }
+    return () => { isAlive = false; };
+  }, [themeSource, settings?.activePaletteThemeId, settings?.updatedAt]);
 
   const applyFixedColors = (isDark: boolean) => {
     if (isDark) {
@@ -252,11 +282,40 @@ export default function RootLayout() {
     const basePaper = isDark ? MD3DarkTheme : MD3LightTheme;
     const baseNav = isDark ? DarkTheme : LightTheme;
 
+    const withAppExtras = (colors: any) => {
+      const primary = colors.primary;
+      const secondary = colors.secondary;
+      const headerMid = mixColors(primary, secondary, 0.5) ?? primary;
+      return {
+        ...colors,
+        success: colors.success ?? colors.secondary,
+        onSuccess: colors.onSuccess ?? colors.onSecondary,
+        successContainer: colors.successContainer ?? colors.secondaryContainer,
+        onSuccessContainer: colors.onSuccessContainer ?? colors.onSecondaryContainer,
+        warning: colors.warning ?? colors.tertiary,
+        onWarning: colors.onWarning ?? colors.onTertiary,
+        warningContainer: colors.warningContainer ?? colors.tertiaryContainer,
+        onWarningContainer: colors.onWarningContainer ?? colors.onTertiaryContainer,
+        info: colors.info ?? colors.primary,
+        onInfo: colors.onInfo ?? colors.onPrimary,
+        infoContainer: colors.infoContainer ?? colors.primaryContainer,
+        onInfoContainer: colors.onInfoContainer ?? colors.onPrimaryContainer,
+        headerGradientStart: colors.headerGradientStart ?? primary,
+        headerGradientMid: colors.headerGradientMid ?? headerMid,
+        headerGradientEnd: colors.headerGradientEnd ?? secondary,
+        headerText: colors.headerText ?? colors.onPrimary,
+        headerIcon: colors.headerIcon ?? colors.onPrimary,
+        iconPrimary: colors.iconPrimary ?? colors.primary,
+        iconSecondary: colors.iconSecondary ?? colors.secondary,
+        iconMuted: colors.iconMuted ?? colors.onSurfaceVariant,
+      };
+    };
+
     if (themeSource === "fixed") {
-      const colors = {
+      const colors = withAppExtras({
         ...basePaper.colors,
         ...applyFixedColors(isDark),
-      };
+      });
       return {
         paper: { ...basePaper, colors },
         nav: {
@@ -271,10 +330,10 @@ export default function RootLayout() {
     }
 
     if (themeSource === "mono") {
-      const colors = {
+      const colors = withAppExtras({
         ...basePaper.colors,
         ...applyMonoColors(isDark),
-      };
+      });
       return {
         paper: { ...basePaper, colors },
         nav: {
@@ -288,7 +347,132 @@ export default function RootLayout() {
       };
     }
 
-    if (!systemPalette) return { paper: basePaper, nav: baseNav };
+    if (themeSource === "custom" && customTheme) {
+      const colors = withAppExtras({
+        ...basePaper.colors,
+        ...deriveCustomThemeColors(customTheme.primary, customTheme.secondary, isDark),
+      });
+      return {
+        paper: { ...basePaper, colors },
+        nav: {
+          ...baseNav,
+          colors: {
+            ...baseNav.colors,
+            card: colors.surface,
+            background: colors.background,
+          },
+        },
+      };
+    }
+
+    const baseWithExtras = {
+      ...basePaper,
+      colors: withAppExtras(basePaper.colors),
+    };
+
+    if (themeSource === "custom" && !customTheme) {
+      return {
+        paper: baseWithExtras,
+        nav: {
+          ...baseNav,
+          colors: {
+            ...baseNav.colors,
+            card: baseWithExtras.colors.surface,
+            background: baseWithExtras.colors.background,
+          },
+        },
+      };
+    }
+
+    if (themeSource === "palette" && paletteTheme) {
+      const paletteColors = isDark ? paletteTheme.dark : paletteTheme.light;
+      const colors = withAppExtras({
+        ...basePaper.colors,
+        primary: paletteColors.primary,
+        onPrimary: paletteColors.onPrimary,
+        primaryContainer: paletteColors.primaryContainer,
+        onPrimaryContainer: paletteColors.onPrimaryContainer,
+        secondary: paletteColors.secondary,
+        onSecondary: paletteColors.onSecondary,
+        secondaryContainer: paletteColors.secondaryContainer,
+        onSecondaryContainer: paletteColors.onSecondaryContainer,
+        tertiary: paletteColors.tertiary,
+        onTertiary: paletteColors.onTertiary,
+        tertiaryContainer: paletteColors.tertiaryContainer,
+        onTertiaryContainer: paletteColors.onTertiaryContainer,
+        background: paletteColors.background,
+        onBackground: paletteColors.onBackground,
+        surface: paletteColors.surface,
+        onSurface: paletteColors.onSurface,
+        surfaceVariant: paletteColors.surfaceVariant,
+        onSurfaceVariant: paletteColors.onSurfaceVariant,
+        outline: paletteColors.outline,
+        outlineVariant: paletteColors.outlineVariant,
+        error: paletteColors.error,
+        onError: paletteColors.onError,
+        errorContainer: paletteColors.errorContainer,
+        onErrorContainer: paletteColors.onErrorContainer,
+        success: paletteColors.success,
+        onSuccess: paletteColors.onSuccess,
+        successContainer: paletteColors.successContainer,
+        onSuccessContainer: paletteColors.onSuccessContainer,
+        warning: paletteColors.warning,
+        onWarning: paletteColors.onWarning,
+        warningContainer: paletteColors.warningContainer,
+        onWarningContainer: paletteColors.onWarningContainer,
+        info: paletteColors.info,
+        onInfo: paletteColors.onInfo,
+        infoContainer: paletteColors.infoContainer,
+        onInfoContainer: paletteColors.onInfoContainer,
+        headerGradientStart: paletteColors.headerGradientStart,
+        headerGradientMid: paletteColors.headerGradientMid,
+        headerGradientEnd: paletteColors.headerGradientEnd,
+        headerText: paletteColors.headerText,
+        headerIcon: paletteColors.headerIcon,
+        iconPrimary: paletteColors.iconPrimary,
+        iconSecondary: paletteColors.iconSecondary,
+        iconMuted: paletteColors.iconMuted,
+      });
+      return {
+        paper: { ...basePaper, colors },
+        nav: {
+          ...baseNav,
+          colors: {
+            ...baseNav.colors,
+            card: colors.surface,
+            background: colors.background,
+          },
+        },
+      };
+    }
+
+    if (themeSource === "palette" && !paletteTheme) {
+      return {
+        paper: baseWithExtras,
+        nav: {
+          ...baseNav,
+          colors: {
+            ...baseNav.colors,
+            card: baseWithExtras.colors.surface,
+            background: baseWithExtras.colors.background,
+          },
+        },
+      };
+    }
+
+    if (!systemPalette) {
+      return {
+        paper: baseWithExtras,
+        nav: {
+          ...baseNav,
+          colors: {
+            ...baseNav.colors,
+            card: baseWithExtras.colors.surface,
+            background: baseWithExtras.colors.background,
+          },
+        },
+      };
+    }
 
     // استخراج الـ tones من الـ palettes المختلفة
     // system_accent1 = primary, system_accent2 = secondary, system_accent3 = tertiary
@@ -363,7 +547,7 @@ export default function RootLayout() {
         };
 
     return {
-      paper: { ...basePaper, colors },
+      paper: { ...basePaper, colors: withAppExtras(colors) },
       nav: {
         ...baseNav,
         colors: {
@@ -373,7 +557,7 @@ export default function RootLayout() {
         },
       },
     };
-  }, [systemPalette, resolvedThemeMode, themeSource]);
+  }, [systemPalette, resolvedThemeMode, themeSource, customTheme, paletteTheme]);
 
   if (!isReady) return null;
 
@@ -391,6 +575,8 @@ export default function RootLayout() {
                 <Stack.Screen name="transactions/add-expense" />
                 <Stack.Screen name="transactions/add-income" />
                 <Stack.Screen name="categories/manage" />
+                <Stack.Screen name="themes/index" />
+                <Stack.Screen name="themes/palette" />
                 <Stack.Screen name="bills/index" />
                 <Stack.Screen name="work/index" />
                 <Stack.Screen name="reports/current" />

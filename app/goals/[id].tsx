@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-nativ
 
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'react-native-paper';
 
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { goalService } from '@/src/services/goalService';
@@ -16,6 +17,7 @@ export default function GoalDetailsScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const goalId = Number(params.id);
   const settings = useSettingsStore((state) => state.settings);
+  const theme = useTheme();
 
   const [details, setDetails] = useState<GoalDetails | null>(null);
   const [name, setName] = useState('');
@@ -50,8 +52,8 @@ export default function GoalDetailsScreen() {
 
   if (!details) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-950">
-        <Text className="text-slate-300">{t('common.loading')}</Text>
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <Text style={{ color: theme.colors.onSurfaceVariant }}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -110,80 +112,93 @@ export default function GoalDetailsScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#020617' }}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}
     >
-      <View className="rounded-2xl bg-slate-900 p-4">
-        <Text className="text-xl font-bold text-white">{details.goal.name}</Text>
-        <Text className="mt-2 text-slate-200">
+      <View className="rounded-2xl p-4" style={{ backgroundColor: theme.colors.surface }}>
+        <Text className="text-xl font-bold" style={{ color: theme.colors.onSurface }}>{details.goal.name}</Text>
+        <Text className="mt-2" style={{ color: theme.colors.onSurfaceVariant }}>
           {t('goals.saved')}: {formatMoney(details.goal.savedAmount, locale, currency)}
         </Text>
-        <Text className="text-slate-400">
+        <Text style={{ color: theme.colors.onSurfaceVariant }}>
           {t('goals.remaining')}:{' '}
           {formatMoney(Math.max(details.goal.targetAmount - details.goal.savedAmount, 0), locale, currency)}
         </Text>
-        <View className="mt-3 h-3 rounded-full bg-slate-700">
+        <View className="mt-3 h-3 rounded-full" style={{ backgroundColor: theme.colors.surfaceVariant }}>
           <View
-            className="h-3 rounded-full bg-emerald-500"
-            style={{ width: `${Math.round(progress * 100)}%` }}
+            className="h-3 rounded-full"
+            style={{ backgroundColor: theme.colors.success, width: `${Math.round(progress * 100)}%` }}
           />
         </View>
-        <Text className="mt-1 text-right text-slate-400">{Math.round(progress * 100)}%</Text>
+        <Text className="mt-1 text-right" style={{ color: theme.colors.onSurfaceVariant }}>
+          {Math.round(progress * 100)}%
+        </Text>
       </View>
 
-      <View className="mt-4 rounded-2xl bg-slate-900 p-4">
-        <Text className="text-base font-bold text-white">{t('goals.transfer')}</Text>
+      <View className="mt-4 rounded-2xl p-4" style={{ backgroundColor: theme.colors.surface }}>
+        <Text className="text-base font-bold" style={{ color: theme.colors.onSurface }}>{t('goals.transfer')}</Text>
         <TextInput
           value={transferAmount}
           onChangeText={setTransferAmount}
           placeholder={t('goals.transferAmount')}
           keyboardType="decimal-pad"
-          placeholderTextColor="#64748b"
-          className="mt-2 rounded-xl bg-slate-800 px-4 py-3 text-white"
+          placeholderTextColor={theme.colors.onSurfaceVariant}
+          className="mt-2 rounded-xl px-4 py-3"
+          style={{ backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface }}
         />
-        <Pressable onPress={onTransfer} className="mt-3 rounded-xl bg-emerald-500 py-3">
-          <Text className="text-center font-semibold text-white">{t('goals.transfer')}</Text>
+        <Pressable onPress={onTransfer} className="mt-3 rounded-xl py-3" style={{ backgroundColor: theme.colors.success }}>
+          <Text className="text-center font-semibold" style={{ color: theme.colors.onSuccess }}>
+            {t('goals.transfer')}
+          </Text>
         </Pressable>
       </View>
 
-      <View className="mt-4 rounded-2xl bg-slate-900 p-4">
-        <Text className="text-base font-bold text-white">{t('goals.updateGoal')}</Text>
+      <View className="mt-4 rounded-2xl p-4" style={{ backgroundColor: theme.colors.surface }}>
+        <Text className="text-base font-bold" style={{ color: theme.colors.onSurface }}>{t('goals.updateGoal')}</Text>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder={t('goals.goalName')}
-          placeholderTextColor="#64748b"
-          className="mt-2 rounded-xl bg-slate-800 px-4 py-3 text-white"
+          placeholderTextColor={theme.colors.onSurfaceVariant}
+          className="mt-2 rounded-xl px-4 py-3"
+          style={{ backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface }}
         />
         <TextInput
           value={targetAmount}
           onChangeText={setTargetAmount}
           placeholder={t('goals.targetAmount')}
           keyboardType="decimal-pad"
-          placeholderTextColor="#64748b"
-          className="mt-2 rounded-xl bg-slate-800 px-4 py-3 text-white"
+          placeholderTextColor={theme.colors.onSurfaceVariant}
+          className="mt-2 rounded-xl px-4 py-3"
+          style={{ backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface }}
         />
-        <Pressable onPress={onUpdateGoal} className="mt-3 rounded-xl bg-indigo-500 py-3">
-          <Text className="text-center font-semibold text-white">{t('goals.updateGoal')}</Text>
+        <Pressable onPress={onUpdateGoal} className="mt-3 rounded-xl py-3" style={{ backgroundColor: theme.colors.primary }}>
+          <Text className="text-center font-semibold" style={{ color: theme.colors.onPrimary }}>
+            {t('goals.updateGoal')}
+          </Text>
         </Pressable>
-        <Pressable onPress={onCancelGoal} className="mt-3 rounded-xl bg-rose-500 py-3">
-          <Text className="text-center font-semibold text-white">{t('goals.cancelGoal')}</Text>
+        <Pressable onPress={onCancelGoal} className="mt-3 rounded-xl py-3" style={{ backgroundColor: theme.colors.error }}>
+          <Text className="text-center font-semibold" style={{ color: theme.colors.onError }}>
+            {t('goals.cancelGoal')}
+          </Text>
         </Pressable>
       </View>
 
-      <View className="mb-12 mt-4 rounded-2xl bg-slate-900 p-4">
-        <Text className="text-base font-bold text-white">{t('goals.history')}</Text>
+      <View className="mb-12 mt-4 rounded-2xl p-4" style={{ backgroundColor: theme.colors.surface }}>
+        <Text className="text-base font-bold" style={{ color: theme.colors.onSurface }}>{t('goals.history')}</Text>
         <View className="mt-3 gap-2">
           {details.transfers.length === 0 ? (
             <EmptyState title={t('common.noData')} />
           ) : (
             details.transfers.map((row) => (
-              <View key={row.id} className="rounded-xl bg-slate-800 px-4 py-3">
-                <Text className="text-slate-200">{row.action}</Text>
-                <Text className={row.action === 'transfer' ? 'text-rose-400' : 'text-emerald-400'}>
+              <View key={row.id} className="rounded-xl px-4 py-3" style={{ backgroundColor: theme.colors.surfaceVariant }}>
+                <Text style={{ color: theme.colors.onSurface }}>{row.action}</Text>
+                <Text style={{ color: row.action === 'transfer' ? theme.colors.error : theme.colors.success }}>
                   {formatMoney(row.action === 'transfer' ? -row.amount : row.amount, locale, currency, true)}
                 </Text>
-                <Text className="text-xs text-slate-500">{row.transactionOccurredAt}</Text>
+                <Text className="text-xs" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {row.transactionOccurredAt}
+                </Text>
               </View>
             ))
           )}

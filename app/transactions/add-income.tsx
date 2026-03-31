@@ -8,19 +8,20 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { TransactionForm } from "@/src/components/forms/TransactionForm";
 import { transactionService } from "@/src/services/transactionService";
+import { withAlpha } from "@/src/utils/colors";
 
-function StepsIndicator({ isAr }: { isAr: boolean }) {
+function StepsIndicator({ isAr, accent, labelColor }: { isAr: boolean; accent: string; labelColor: string }) {
   const steps = isAr ? ["المبلغ", "الفئة", "الحفظ"] : ["Amount", "Category", "Save"];
   return (
     <View style={styles.stepsRow}>
       {steps.map((label, i) => (
         <View key={i} style={styles.stepWrap}>
-          {i > 0 && <View style={[styles.stepLine, { backgroundColor: "rgba(74,222,128,0.3)" }]} />}
+          {i > 0 && <View style={[styles.stepLine, { backgroundColor: withAlpha(accent, 0.3) }]} />}
           <View style={styles.stepItem}>
-            <View style={styles.stepCircle}>
-              <Text style={styles.stepNum}>{i + 1}</Text>
+            <View style={[styles.stepCircle, { borderColor: withAlpha(accent, 0.4), backgroundColor: withAlpha(accent, 0.12) }]}>
+              <Text style={[styles.stepNum, { color: accent }]}>{i + 1}</Text>
             </View>
-            <Text style={styles.stepLabel}>{label}</Text>
+            <Text style={[styles.stepLabel, { color: labelColor }]}>{label}</Text>
           </View>
         </View>
       ))}
@@ -31,7 +32,12 @@ function StepsIndicator({ isAr }: { isAr: boolean }) {
 export default function AddIncomeScreen() {
   const router      = useRouter();
   const { t, i18n } = useTranslation();
-  const theme       = useTheme();
+  const theme       = useTheme() as any;
+  const accent      = theme.colors.success ?? theme.colors.secondary;
+  const headerText  = theme.colors.headerText ?? theme.colors.onPrimary;
+  const headerStart = theme.colors.headerGradientStart ?? `${accent}55`;
+  const headerEnd   = theme.colors.headerGradientEnd ?? `${accent}55`;
+  const headerMid   = theme.colors.headerGradientMid ?? `${accent}99`;
   const isAr        = i18n.language === "ar";
 
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -53,16 +59,16 @@ export default function AddIncomeScreen() {
         transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }],
       }}>
         <LinearGradient
-          colors={["#052e16", "#14532d", "#052e16"]}
+          colors={[headerStart, headerMid, headerEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { shadowColor: theme.colors.shadow ?? headerText }]}
         >
           <View style={styles.backRow}>
-            <View style={styles.backBtn}>
+            <View style={[styles.backBtn, { backgroundColor: withAlpha(headerText, 0.08) }]}>
               <IconButton
                 icon={isAr ? "arrow-right" : "arrow-left"}
-                iconColor="rgba(255,255,255,0.7)"
+                iconColor={theme.colors.headerIcon ?? theme.colors.onPrimary}
                 size={20}
                 style={styles.noMargin}
                 onPress={() => router.back()}
@@ -73,21 +79,21 @@ export default function AddIncomeScreen() {
           <View style={styles.heroRow}>
             <View style={styles.heroIcon}>
               <LinearGradient
-                colors={["rgba(74,222,128,0.3)", "rgba(34,197,94,0.15)"]}
+                colors={[`${accent}4D`, `${accent}26`]}
                 style={styles.heroIconGradient}
               >
-                <IconButton icon="plus-circle" iconColor="#4ADE80" size={32} style={styles.noMargin} />
+                <IconButton icon="plus-circle" iconColor={accent} size={32} style={styles.noMargin} />
               </LinearGradient>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>{t("dashboard.addIncome")}</Text>
-              <Text style={styles.heroSubtitle}>
+              <Text style={[styles.heroTitle, { color: headerText }]}>{t("dashboard.addIncome")}</Text>
+              <Text style={[styles.heroSubtitle, { color: withAlpha(headerText, 0.55) }]}>
                 {isAr ? "سجّل دخلك في ثوانٍ" : "Log your income in seconds"}
               </Text>
             </View>
           </View>
 
-          <StepsIndicator isAr={isAr} />
+          <StepsIndicator isAr={isAr} accent={accent} labelColor={withAlpha(headerText, 0.65)} />
         </LinearGradient>
       </Animated.View>
 
@@ -103,7 +109,7 @@ export default function AddIncomeScreen() {
           <View style={[styles.card, {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outlineVariant,
-            shadowColor: "#4ADE80",
+            shadowColor: accent,
           }]}>
             <TransactionForm
               kind="income"
@@ -136,18 +142,17 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 52, paddingBottom: 24, paddingHorizontal: 16, gap: 16,
     borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35, shadowRadius: 20, elevation: 10,
   },
   backRow: { flexDirection: "row" },
-  backBtn: { borderRadius: 12, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.08)" },
+  backBtn: { borderRadius: 12, overflow: "hidden" },
 
   heroRow:          { flexDirection: "row", alignItems: "center", gap: 14 },
   heroIcon:         { borderRadius: 20, overflow: "hidden" },
   heroIconGradient: { borderRadius: 20, padding: 4 },
-  heroTitle:        { fontSize: 24, fontWeight: "900", color: "#fff" },
-  heroSubtitle:     { fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 3, fontWeight: "500" },
+  heroTitle:        { fontSize: 24, fontWeight: "900" },
+  heroSubtitle:     { fontSize: 13, marginTop: 3, fontWeight: "500" },
 
   stepsRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
   stepWrap: { flex: 1, flexDirection: "row", alignItems: "center" },
@@ -156,12 +161,10 @@ const styles = StyleSheet.create({
   stepCircle: {
     width: 28, height: 28, borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "rgba(74,222,128,0.4)",
-    backgroundColor: "rgba(74,222,128,0.12)",
     alignItems: "center", justifyContent: "center",
   },
-  stepNum:   { color: "#4ADE80", fontSize: 12, fontWeight: "800" },
-  stepLabel: { color: "rgba(255,255,255,0.65)", fontSize: 10, fontWeight: "600" },
+  stepNum:   { fontSize: 12, fontWeight: "800" },
+  stepLabel: { fontSize: 10, fontWeight: "600" },
 
   scroll: { padding: 16, paddingBottom: 60 },
   card: {

@@ -8,10 +8,10 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { TransactionForm } from "@/src/components/forms/TransactionForm";
 import { transactionService } from "@/src/services/transactionService";
+import { withAlpha } from "@/src/utils/colors";
 
 // ── Steps Indicator ──────────────────────────────────────────────
-function StepsIndicator({ isAr }: { isAr: boolean }) {
-  const theme = useTheme();
+function StepsIndicator({ isAr, accent, labelColor }: { isAr: boolean; accent: string; labelColor: string }) {
   const steps = isAr
     ? ["المبلغ", "الفئة", "الحفظ"]
     : ["Amount", "Category", "Save"];
@@ -22,13 +22,13 @@ function StepsIndicator({ isAr }: { isAr: boolean }) {
         <View key={i} style={styles.stepWrap}>
           {/* خط رابط قبل الدائرة */}
           {i > 0 && (
-            <View style={[styles.stepLine, { backgroundColor: "rgba(248,113,113,0.3)" }]} />
+            <View style={[styles.stepLine, { backgroundColor: withAlpha(accent, 0.3) }]} />
           )}
           <View style={styles.stepItem}>
-            <View style={[styles.stepCircle, { backgroundColor: "rgba(248,113,113,0.15)", borderColor: "rgba(248,113,113,0.4)" }]}>
-              <Text style={styles.stepNum}>{i + 1}</Text>
+            <View style={[styles.stepCircle, { backgroundColor: withAlpha(accent, 0.15), borderColor: withAlpha(accent, 0.4) }]}>
+              <Text style={[styles.stepNum, { color: accent }]}>{i + 1}</Text>
             </View>
-            <Text style={[styles.stepLabel, { color: "rgba(255,255,255,0.65)" }]}>{label}</Text>
+            <Text style={[styles.stepLabel, { color: labelColor }]}>{label}</Text>
           </View>
         </View>
       ))}
@@ -40,7 +40,12 @@ function StepsIndicator({ isAr }: { isAr: boolean }) {
 export default function AddExpenseScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const theme   = useTheme();
+  const theme   = useTheme() as any;
+  const accent  = theme.colors.error;
+  const headerText = theme.colors.headerText ?? theme.colors.onPrimary;
+  const headerStart = theme.colors.headerGradientStart ?? `${accent}55`;
+  const headerEnd   = theme.colors.headerGradientEnd ?? `${accent}55`;
+  const headerMid   = theme.colors.headerGradientMid ?? `${accent}99`;
   const isAr    = i18n.language === "ar";
 
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -62,17 +67,17 @@ export default function AddExpenseScreen() {
         transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }],
       }}>
         <LinearGradient
-          colors={["#4a0a0a", "#7f1d1d", "#1c0a0a"]}
+          colors={[headerStart, headerMid, headerEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { shadowColor: theme.colors.shadow ?? headerText }]}
         >
           {/* زر الرجوع */}
           <View style={styles.backRow}>
-            <View style={[styles.backBtn, { backgroundColor: "rgba(255,255,255,0.08)" }]}>
+            <View style={[styles.backBtn, { backgroundColor: withAlpha(headerText, 0.08) }]}>
               <IconButton
                 icon={isAr ? "arrow-right" : "arrow-left"}
-                iconColor="rgba(255,255,255,0.7)"
+                iconColor={theme.colors.headerIcon ?? theme.colors.onPrimary}
                 size={20}
                 style={styles.noMargin}
                 onPress={() => router.back()}
@@ -84,22 +89,22 @@ export default function AddExpenseScreen() {
           <View style={styles.heroRow}>
             <View style={styles.heroIcon}>
               <LinearGradient
-                colors={["rgba(248,113,113,0.3)", "rgba(220,38,38,0.15)"]}
+                colors={[`${accent}4D`, `${accent}26`]}
                 style={styles.heroIconGradient}
               >
-                <IconButton icon="minus-circle" iconColor="#F87171" size={32} style={styles.noMargin} />
+                <IconButton icon="minus-circle" iconColor={accent} size={32} style={styles.noMargin} />
               </LinearGradient>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>{t("dashboard.addExpense")}</Text>
-              <Text style={styles.heroSubtitle}>
+              <Text style={[styles.heroTitle, { color: headerText }]}>{t("dashboard.addExpense")}</Text>
+              <Text style={[styles.heroSubtitle, { color: withAlpha(headerText, 0.55) }]}>
                 {isAr ? "سجّل مصروفك في ثوانٍ" : "Log your expense in seconds"}
               </Text>
             </View>
           </View>
 
           {/* Steps */}
-          <StepsIndicator isAr={isAr} />
+          <StepsIndicator isAr={isAr} accent={accent} labelColor={withAlpha(headerText, 0.65)} />
         </LinearGradient>
       </Animated.View>
 
@@ -116,7 +121,7 @@ export default function AddExpenseScreen() {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outlineVariant,
             // shadow
-            shadowColor: "#F87171",
+            shadowColor: accent,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.08,
             shadowRadius: 16,
@@ -159,7 +164,6 @@ const styles = StyleSheet.create({
     gap: 16,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
@@ -171,8 +175,8 @@ const styles = StyleSheet.create({
   heroRow:          { flexDirection: "row", alignItems: "center", gap: 14 },
   heroIcon:         { borderRadius: 20, overflow: "hidden" },
   heroIconGradient: { borderRadius: 20, padding: 4 },
-  heroTitle:        { fontSize: 24, fontWeight: "900", color: "#fff" },
-  heroSubtitle:     { fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 3, fontWeight: "500" },
+  heroTitle:        { fontSize: 24, fontWeight: "900" },
+  heroSubtitle:     { fontSize: 13, marginTop: 3, fontWeight: "500" },
 
   // steps
   stepsRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
@@ -184,7 +188,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: "center", justifyContent: "center",
   },
-  stepNum:   { color: "#F87171", fontSize: 12, fontWeight: "800" },
+  stepNum:   { fontSize: 12, fontWeight: "800" },
   stepLabel: { fontSize: 10, fontWeight: "600" },
 
   // scroll + card

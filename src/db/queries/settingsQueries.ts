@@ -16,6 +16,8 @@ export const settingsQueries = {
         locale = COALESCE(?, locale),
         theme_mode = COALESCE(?, theme_mode),
         theme_source = COALESCE(?, theme_source),
+        active_theme_id = COALESCE(?, active_theme_id),
+        active_palette_theme_id = COALESCE(?, active_palette_theme_id),
         time_format = COALESCE(?, time_format),
         updated_at = ?
       WHERE id = 1;
@@ -28,6 +30,8 @@ export const settingsQueries = {
       s.locale,
       s.themeMode,
       s.themeSource,
+      s.activeThemeId,
+      s.activePaletteThemeId,
       s.timeFormat,
       new Date().toISOString(),
     ]);

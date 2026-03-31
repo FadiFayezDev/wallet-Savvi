@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getFirst, runQuery } from '@/src/db/client';
-import type { AppSettings, LockMethod, ThemeMode } from '@/src/types/domain';
+import type { AppSettings, LockMethod, ThemeMode, ThemeSource } from '@/src/types/domain';
 import { nowIso } from '@/src/utils/date';
 
 interface AppSettingsRow {
@@ -16,7 +16,9 @@ interface AppSettingsRow {
   notify_bills_enabled: number;
   notify_work_enabled: number;
   theme_mode: ThemeMode;
-  theme_source: 'material' | 'fixed';
+  theme_source: ThemeSource;
+  active_theme_id: number | null;
+  active_palette_theme_id: number | null;
   time_format: '12h' | '24h';
   updated_at: string;
 }
@@ -35,6 +37,8 @@ const mapSettings = (row: AppSettingsRow): AppSettings => ({
   notifyWorkEnabled: Boolean(row.notify_work_enabled),
   themeMode: row.theme_mode,
   themeSource: row.theme_source ?? 'material',
+  activeThemeId: row.active_theme_id ?? null,
+  activePaletteThemeId: row.active_palette_theme_id ?? null,
   timeFormat: row.time_format ?? '24h',
   updatedAt: row.updated_at,
 });
@@ -46,8 +50,8 @@ export const settingsService = {
       const now = nowIso();
       await runQuery(
         `INSERT INTO app_settings
-         (id, name, balance, daily_limit, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, notify_bills_enabled, notify_work_enabled, theme_mode, theme_source, time_format, updated_at)
-         VALUES (1, 'المستخدم', 0, NULL, 'EGP', 'en', 'none', 30, 1, 20, 1, 1, 'dark', 'material', '24h', ?);`,
+         (id, name, balance, daily_limit, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, notify_bills_enabled, notify_work_enabled, theme_mode, theme_source, active_theme_id, active_palette_theme_id, time_format, updated_at)
+         VALUES (1, 'المستخدم', 0, NULL, 'EGP', 'en', 'none', 30, 1, 20, 1, 1, 'dark', 'material', NULL, NULL, '24h', ?);`,
         [now],
       );
       return {
@@ -64,6 +68,8 @@ export const settingsService = {
         notifyWorkEnabled: true,
         themeMode: 'dark',
         themeSource: 'material',
+        activeThemeId: null,
+        activePaletteThemeId: null,
         timeFormat: '24h',
         updatedAt: now,
       };
@@ -94,6 +100,8 @@ export const settingsService = {
            notify_work_enabled = ?,
            theme_mode = ?,
            theme_source = ?,
+           active_theme_id = ?,
+           active_palette_theme_id = ?,
            time_format = ?,
            updated_at = ?
        WHERE id = 1;`,
@@ -111,6 +119,8 @@ export const settingsService = {
         updated.notifyWorkEnabled ? 1 : 0,
         updated.themeMode,
         updated.themeSource,
+        updated.activeThemeId,
+        updated.activePaletteThemeId,
         updated.timeFormat,
         updated.updatedAt,
       ],

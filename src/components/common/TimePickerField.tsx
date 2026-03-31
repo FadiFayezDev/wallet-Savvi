@@ -3,6 +3,7 @@ import { Modal, Pressable, Text, View, useWindowDimensions } from "react-native"
 import { useTheme } from "react-native-paper";
 
 import type { TimeFormat } from "@/src/types/domain";
+import { withAlpha } from "@/src/utils/colors";
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
@@ -184,7 +185,14 @@ export function TimePickerField({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 16 }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: withAlpha(theme.colors.backdrop ?? theme.colors.scrim ?? theme.colors.onBackground, 0.6),
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
           <View style={{ backgroundColor: theme.colors.surface, borderRadius: 20, padding: 16 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Text style={{ color: theme.colors.onSurface, fontWeight: "800" }}>{label}</Text>

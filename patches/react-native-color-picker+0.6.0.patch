@@ -1,0 +1,58 @@
+diff --git a/node_modules/react-native-color-picker/dist/HoloColorPicker.js b/node_modules/react-native-color-picker/dist/HoloColorPicker.js
+index a177142..2896723 100644
+--- a/node_modules/react-native-color-picker/dist/HoloColorPicker.js
++++ b/node_modules/react-native-color-picker/dist/HoloColorPicker.js
+@@ -12,7 +12,8 @@ var __extends = (this && this.__extends) || (function () {
+     };
+ })();
+ import React from "react";
+-import { I18nManager, Image, InteractionManager, Slider, StyleSheet, TouchableOpacity, View, } from "react-native";
++import Slider from "@react-native-community/slider";
++import { I18nManager, Image, InteractionManager, StyleSheet, TouchableOpacity, View, } from "react-native";
+ import tinycolor from "tinycolor2";
+ import { createPanResponder } from "./utils";
+ var HoloColorPicker = /** @class */ (function (_super) {
+@@ -99,8 +100,8 @@ var HoloColorPicker = /** @class */ (function (_super) {
+         // we always measure because layout is the same even though picker is moved on the page
+         InteractionManager.runAfterInteractions(function () {
+             // measure only after (possible) animation ended
+-            _this.refs.pickerContainer &&
+-                _this.refs.pickerContainer.measure(function (x, y, width, height, pageX, pageY) {
++            _this.pickerContainer &&
++                _this.pickerContainer.measure(function (x, y, width, height, pageX, pageY) {
+                     // picker position in the screen
+                     _this._pageX = pageX;
+                     _this._pageY = pageY;
+@@ -152,7 +153,7 @@ var HoloColorPicker = /** @class */ (function (_super) {
+         });
+         var SliderComp = this._getSlider();
+         return (<View style={style}>
+-        <View onLayout={this._onLayout} ref="pickerContainer" style={styles.pickerContainer}>
++        <View onLayout={this._onLayout} ref={(r) => { this.pickerContainer = r; }} style={styles.pickerContainer}>
+           {!pickerSize ? null : (<View>
+               <View {...this._pickerResponder.panHandlers} style={[computed.picker]} collapsable={false}>
+                 <Image source={require("../resources/color-circle.png")} resizeMode="contain" style={[styles.pickerImage]}/>
+diff --git a/node_modules/react-native-color-picker/dist/TriangleColorPicker.js b/node_modules/react-native-color-picker/dist/TriangleColorPicker.js
+index 8a0b77b..072e3e7 100644
+--- a/node_modules/react-native-color-picker/dist/TriangleColorPicker.js
++++ b/node_modules/react-native-color-picker/dist/TriangleColorPicker.js
+@@ -112,8 +112,8 @@ var TriangleColorPicker = /** @class */ (function (_super) {
+         // we always measure because layout is the same even though picker is moved on the page
+         InteractionManager.runAfterInteractions(function () {
+             // measure only after (possible) animation ended
+-            _this.refs.pickerContainer &&
+-                _this.refs.pickerContainer.measure(function (x, y, width, height, pageX, pageY) {
++            _this.pickerContainer &&
++                _this.pickerContainer.measure(function (x, y, width, height, pageX, pageY) {
+                     // picker position in the screen
+                     _this._pageX = pageX;
+                     _this._pageY = pageY;
+@@ -226,7 +226,7 @@ var TriangleColorPicker = /** @class */ (function (_super) {
+         // Hack for https://github.com/instea/react-native-color-picker/issues/17
+         var rotationHack = makeRotationKey(this.props, angle);
+         return (<View style={style}>
+-        <View onLayout={this._onLayout} ref="pickerContainer" style={styles.pickerContainer}>
++        <View onLayout={this._onLayout} ref={(r) => { this.pickerContainer = r; }} style={styles.pickerContainer}>
+           {!pickerSize ? null : (<View>
+               <View key={rotationHack} style={[styles.triangleContainer, computed.triangleContainer]}>
+                 <View style={[

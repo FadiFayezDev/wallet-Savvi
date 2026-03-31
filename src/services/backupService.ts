@@ -10,6 +10,8 @@ import type { BackupPayloadV1 } from '@/src/types/dto';
 const BACKUP_VERSION = 1 as const;
 
 const TABLES = [
+  'palette_themes',
+  'custom_themes',
   'bill_instances',
   'report_category_breakdown',
   'goal_transactions',
@@ -50,6 +52,8 @@ export const backupService = {
     const goalTransactions = await getAll<Record<string, unknown>>('SELECT * FROM goal_transactions;');
     const monthlyReports = await getAll<Record<string, unknown>>('SELECT * FROM monthly_reports;');
     const reportBreakdown = await getAll<Record<string, unknown>>('SELECT * FROM report_category_breakdown;');
+    const customThemes = await getAll<Record<string, unknown>>('SELECT * FROM custom_themes;');
+    const paletteThemes = await getAll<Record<string, unknown>>('SELECT * FROM palette_themes;');
     const recurringBills = await getAll<Record<string, unknown>>('SELECT * FROM recurring_bills;');
     const billInstances = await getAll<Record<string, unknown>>('SELECT * FROM bill_instances;');
     const workSchedule = await getAll<Record<string, unknown>>('SELECT * FROM work_schedule;');
@@ -72,6 +76,8 @@ export const backupService = {
         goal_transactions: goalTransactions,
         monthly_reports: monthlyReports,
         report_category_breakdown: reportBreakdown,
+        custom_themes: customThemes,
+        palette_themes: paletteThemes,
         recurring_bills: recurringBills,
         bill_instances: billInstances,
         work_schedule: workSchedule,
@@ -236,6 +242,89 @@ export const backupService = {
         }
       }
 
+      if (parsed.data.custom_themes) {
+        for (const row of parsed.data.custom_themes) {
+          await runQuery(
+            `INSERT INTO custom_themes
+             (id, name, primary_color, secondary_color, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?);`,
+            [
+              row.id,
+              row.name,
+              row.primary_color,
+              row.secondary_color,
+              row.created_at,
+              row.updated_at,
+            ],
+            db,
+          );
+        }
+      }
+
+      if (parsed.data.palette_themes) {
+        for (const row of parsed.data.palette_themes) {
+          await runQuery(
+            `INSERT INTO palette_themes
+             (id, name,
+              light_primary, light_on_primary, light_primary_container, light_on_primary_container,
+              light_secondary, light_on_secondary, light_secondary_container, light_on_secondary_container,
+              light_tertiary, light_on_tertiary, light_tertiary_container, light_on_tertiary_container,
+              light_background, light_on_background, light_surface, light_on_surface,
+              light_surface_variant, light_on_surface_variant, light_outline, light_outline_variant,
+              light_error, light_on_error, light_error_container, light_on_error_container,
+              light_success, light_on_success, light_success_container, light_on_success_container,
+              light_warning, light_on_warning, light_warning_container, light_on_warning_container,
+              light_info, light_on_info, light_info_container, light_on_info_container,
+              light_header_gradient_start, light_header_gradient_mid, light_header_gradient_end,
+              light_header_text, light_header_icon,
+              light_icon_primary, light_icon_secondary, light_icon_muted,
+              dark_primary, dark_on_primary, dark_primary_container, dark_on_primary_container,
+              dark_secondary, dark_on_secondary, dark_secondary_container, dark_on_secondary_container,
+              dark_tertiary, dark_on_tertiary, dark_tertiary_container, dark_on_tertiary_container,
+              dark_background, dark_on_background, dark_surface, dark_on_surface,
+              dark_surface_variant, dark_on_surface_variant, dark_outline, dark_outline_variant,
+              dark_error, dark_on_error, dark_error_container, dark_on_error_container,
+              dark_success, dark_on_success, dark_success_container, dark_on_success_container,
+              dark_warning, dark_on_warning, dark_warning_container, dark_on_warning_container,
+              dark_info, dark_on_info, dark_info_container, dark_on_info_container,
+              dark_header_gradient_start, dark_header_gradient_mid, dark_header_gradient_end,
+              dark_header_text, dark_header_icon,
+              dark_icon_primary, dark_icon_secondary, dark_icon_muted,
+              created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [
+              row.id, row.name,
+              row.light_primary, row.light_on_primary, row.light_primary_container, row.light_on_primary_container,
+              row.light_secondary, row.light_on_secondary, row.light_secondary_container, row.light_on_secondary_container,
+              row.light_tertiary, row.light_on_tertiary, row.light_tertiary_container, row.light_on_tertiary_container,
+              row.light_background, row.light_on_background, row.light_surface, row.light_on_surface,
+              row.light_surface_variant, row.light_on_surface_variant, row.light_outline, row.light_outline_variant,
+              row.light_error, row.light_on_error, row.light_error_container, row.light_on_error_container,
+              row.light_success, row.light_on_success, row.light_success_container, row.light_on_success_container,
+              row.light_warning, row.light_on_warning, row.light_warning_container, row.light_on_warning_container,
+              row.light_info, row.light_on_info, row.light_info_container, row.light_on_info_container,
+              row.light_header_gradient_start, row.light_header_gradient_mid, row.light_header_gradient_end,
+              row.light_header_text, row.light_header_icon,
+              row.light_icon_primary, row.light_icon_secondary, row.light_icon_muted,
+              row.dark_primary, row.dark_on_primary, row.dark_primary_container, row.dark_on_primary_container,
+              row.dark_secondary, row.dark_on_secondary, row.dark_secondary_container, row.dark_on_secondary_container,
+              row.dark_tertiary, row.dark_on_tertiary, row.dark_tertiary_container, row.dark_on_tertiary_container,
+              row.dark_background, row.dark_on_background, row.dark_surface, row.dark_on_surface,
+              row.dark_surface_variant, row.dark_on_surface_variant, row.dark_outline, row.dark_outline_variant,
+              row.dark_error, row.dark_on_error, row.dark_error_container, row.dark_on_error_container,
+              row.dark_success, row.dark_on_success, row.dark_success_container, row.dark_on_success_container,
+              row.dark_warning, row.dark_on_warning, row.dark_warning_container, row.dark_on_warning_container,
+              row.dark_info, row.dark_on_info, row.dark_info_container, row.dark_on_info_container,
+              row.dark_header_gradient_start, row.dark_header_gradient_mid, row.dark_header_gradient_end,
+              row.dark_header_text, row.dark_header_icon,
+              row.dark_icon_primary, row.dark_icon_secondary, row.dark_icon_muted,
+              row.created_at, row.updated_at,
+            ],
+            db,
+          );
+        }
+      }
+
       if (parsed.data.recurring_bills) {
         for (const row of parsed.data.recurring_bills) {
           await runQuery(
@@ -347,8 +436,8 @@ export const backupService = {
       for (const row of parsed.data.settings) {
         await runQuery(
           `INSERT INTO app_settings
-           (id, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, notify_bills_enabled, notify_work_enabled, theme_mode, theme_source, time_format, name, balance, daily_limit, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+           (id, currency_code, locale, lock_method, auto_lock_seconds, spending_alert_enabled, spending_alert_threshold_pct, notify_bills_enabled, notify_work_enabled, theme_mode, theme_source, active_theme_id, active_palette_theme_id, time_format, name, balance, daily_limit, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             row.id,
             row.currency_code,
@@ -361,6 +450,8 @@ export const backupService = {
             row.notify_work_enabled ?? 1,
             row.theme_mode,
             row.theme_source ?? 'material',
+            row.active_theme_id ?? null,
+            row.active_palette_theme_id ?? null,
             row.time_format ?? '24h',
             row.name ?? 'المستخدم',
             row.balance ?? 0,
