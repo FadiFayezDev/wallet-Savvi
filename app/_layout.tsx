@@ -143,29 +143,43 @@ export default function RootLayout() {
 
   const themeSource = settings?.themeSource ?? "material";
 
-  useEffect(() => {
-    let isAlive = true;
-    if (themeSource === "custom" && settings?.activeThemeId) {
-      themeService.getTheme(settings.activeThemeId)
-        .then((theme) => { if (isAlive) setCustomTheme(theme); })
-        .catch(() => { if (isAlive) setCustomTheme(null); });
-    } else {
-      setCustomTheme(null);
-    }
-    return () => { isAlive = false; };
-  }, [themeSource, settings?.activeThemeId, settings?.updatedAt]);
+  const [loadedThemeProps, setLoadedThemeProps] = useState<{ source?: string, id?: number | null }>({});
 
   useEffect(() => {
     let isAlive = true;
-    if (themeSource === "palette" && settings?.activePaletteThemeId) {
-      paletteThemeService.getTheme(settings.activePaletteThemeId)
-        .then((theme) => { if (isAlive) setPaletteTheme(theme); })
-        .catch(() => { if (isAlive) setPaletteTheme(null); });
+    const currentId = themeSource === "custom" ? settings?.activeThemeId : themeSource === "palette" ? settings?.activePaletteThemeId : null;
+
+    // Signal loading by clearing the loaded match
+    setLoadedThemeProps({ source: undefined, id: undefined });
+
+    if (themeSource === "custom" && currentId) {
+      themeService.getTheme(currentId)
+        .then((theme) => { 
+           if (isAlive) { setCustomTheme(theme); setLoadedThemeProps({ source: themeSource, id: currentId }); } 
+        })
+        .catch(() => { 
+           if (isAlive) { setCustomTheme(null); setLoadedThemeProps({ source: themeSource, id: currentId }); } 
+        });
+    } else if (themeSource === "palette" && currentId) {
+      paletteThemeService.getTheme(currentId)
+        .then((theme) => { 
+           if (isAlive) { setPaletteTheme(theme); setLoadedThemeProps({ source: themeSource, id: currentId }); } 
+        })
+        .catch(() => { 
+           if (isAlive) { setPaletteTheme(null); setLoadedThemeProps({ source: themeSource, id: currentId }); } 
+        });
     } else {
+      setCustomTheme(null);
       setPaletteTheme(null);
+      setLoadedThemeProps({ source: themeSource, id: null });
     }
     return () => { isAlive = false; };
-  }, [themeSource, settings?.activePaletteThemeId, settings?.updatedAt]);
+  }, [themeSource, settings?.activeThemeId, settings?.activePaletteThemeId, settings?.updatedAt]);
+
+  const isThemeReady = settings !== null && 
+    loadedThemeProps.source === themeSource && 
+    loadedThemeProps.id === (themeSource === "custom" ? settings?.activeThemeId : themeSource === "palette" ? settings?.activePaletteThemeId : null);
+
 
   const applyFixedColors = (isDark: boolean) => {
     if (isDark) {
@@ -559,7 +573,7 @@ export default function RootLayout() {
     };
   }, [systemPalette, resolvedThemeMode, themeSource, customTheme, paletteTheme]);
 
-  if (!isReady) return null;
+  if (!isReady || !isThemeReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
