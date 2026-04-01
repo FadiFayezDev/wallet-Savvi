@@ -10,6 +10,7 @@ import type { BackupPayloadV1 } from '@/src/types/dto';
 const BACKUP_VERSION = 1 as const;
 
 const TABLES = [
+  'accounts',
   'palette_themes',
   'custom_themes',
   'bill_instances',
@@ -56,6 +57,7 @@ export const backupService = {
     const paletteThemes = await getAll<Record<string, unknown>>('SELECT * FROM palette_themes;');
     const recurringBills = await getAll<Record<string, unknown>>('SELECT * FROM recurring_bills;');
     const billInstances = await getAll<Record<string, unknown>>('SELECT * FROM bill_instances;');
+    const accounts = await getAll<Record<string, unknown>>('SELECT * FROM accounts;');
     const workSchedule = await getAll<Record<string, unknown>>('SELECT * FROM work_schedule;');
     const dailyWorkExpenses = await getAll<Record<string, unknown>>('SELECT * FROM daily_work_expenses;');
     const workDaysLog = await getAll<Record<string, unknown>>('SELECT * FROM work_days_log;');
@@ -75,6 +77,7 @@ export const backupService = {
         goals,
         goal_transactions: goalTransactions,
         monthly_reports: monthlyReports,
+        accounts,
         report_category_breakdown: reportBreakdown,
         custom_themes: customThemes,
         palette_themes: paletteThemes,
@@ -120,6 +123,63 @@ export const backupService = {
         await runQuery(`DELETE FROM ${table};`, [], db);
       }
 
+      // Accounts (new in multi-account)
+      if (parsed.data.accounts && parsed.data.accounts.length > 0) {
+        for (const row of parsed.data.accounts) {
+          await runQuery(
+            `INSERT INTO accounts
+             (id, name, group_key, balance, description, is_default, is_hidden, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [
+              row.id,
+              row.name,
+              row.group_key,
+              row.balance ?? 0,
+              row.description ?? null,
+              row.is_default ?? 0,
+              row.is_hidden ?? 0,
+              row.created_at,
+              row.updated_at,
+            ],
+            db,
+          );
+        }
+      }
+
+      let defaultAccountId: number | null = null;
+      if (!parsed.data.accounts || parsed.data.accounts.length === 0) {
+        // Seed defaults if backup doesn't have accounts
+        const now = new Date().toISOString();
+        const rows = [
+          ['Cash', 'cash', 1],
+          ['Account', 'account', 0],
+          ['Debit card', 'debit_card', 0],
+          ['Savings', 'savings', 0],
+          ['Top up prepaid', 'top_up_prepaid', 0],
+          ['Investments', 'investments', 0],
+          ['Overdraft', 'overdraft', 0],
+          ['Loan', 'loan', 0],
+          ['Insurance', 'insurance', 0],
+          ['Other', 'other', 0],
+        ];
+        for (const row of rows) {
+          await runQuery(
+            `INSERT INTO accounts
+             (name, group_key, balance, description, is_default, is_hidden, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+            [row[0], row[1], 0, null, row[2], 0, now, now],
+            db,
+          );
+        }
+      }
+
+      const defaultRow = await getFirst<{ id: number }>(
+        'SELECT id FROM accounts WHERE is_default = 1 LIMIT 1;',
+        [],
+        db,
+      );
+      defaultAccountId = defaultRow?.id ?? null;
+
       for (const row of parsed.data.categories) {
         await runQuery(
           `INSERT INTO categories
@@ -144,14 +204,15 @@ export const backupService = {
       for (const row of parsed.data.transactions) {
         await runQuery(
           `INSERT INTO transactions
-           (id, kind, signed_amount, amount_abs, category_id, note, occurred_at, source, is_deleted, cancel_reason, cancelled_at, balance_after, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+           (id, kind, signed_amount, amount_abs, category_id, account_id, note, occurred_at, source, is_deleted, cancel_reason, cancelled_at, balance_after, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             row.id,
             row.kind,
             row.signed_amount,
             row.amount_abs,
             row.category_id ?? null,
+            row.account_id ?? defaultAccountId ?? null,
             row.note ?? null,
             row.occurred_at,
             row.source,
@@ -461,6 +522,15 @@ export const backupService = {
           db,
         );
       }
+
+      // Sync default account balance with settings balance after import
+      await runQuery(
+        `UPDATE accounts
+         SET balance = (SELECT balance FROM app_settings WHERE id = 1)
+         WHERE is_default = 1;`,
+        [],
+        db,
+      );
     });
 
     return true;

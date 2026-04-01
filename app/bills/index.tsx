@@ -6,11 +6,13 @@ import { useTheme } from "react-native-paper";
 
 import { CalculatorField } from "@/src/components/common/CalculatorField";
 import { DatePickerField } from "@/src/components/common/DatePickerField";
+import { ComboSelect } from "@/src/components/forms/ComboSelect";
+import { accountService } from "@/src/services/accountService";
 import { categoryService } from "@/src/services/categoryService";
 import { notificationService } from "@/src/services/notificationService";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
-import type { Category } from "@/src/types/domain";
+import type { Account, Category } from "@/src/types/domain";
 import { toMonthKey } from "@/src/utils/date";
 import { formatMoney } from "@/src/utils/money";
 import { confirmAction } from "@/src/utils/confirm";
@@ -24,6 +26,8 @@ export default function BillsScreen() {
   const [pendingBills, setPendingBills] = useState<any[]>([]);
   const [billInstances, setBillInstances] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [billPayAccounts, setBillPayAccounts] = useState<Record<number, number | null>>({});
   const [loading, setLoading] = useState(false);
 
   const [name, setName] = useState("");
@@ -39,24 +43,39 @@ export default function BillsScreen() {
   const monthKey = toMonthKey(new Date());
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const defaultAccountId = useMemo(() => {
+    const preferred = accounts.find((acc) => acc.isDefault)?.id;
+    return preferred ?? accounts[0]?.id ?? null;
+  }, [accounts]);
+  const accountOptions = useMemo(
+    () =>
+      accounts.map((acc) => ({
+        value: acc.id,
+        label: acc.name,
+      })),
+    [accounts],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [categoryRows, allBills, pending, instances] = await Promise.all([
+      const [categoryRows, allBills, pending, instances, accountRows] = await Promise.all([
         categoryService.listCategories("expense"),
         recurringBillService.getAllBills(true),
         recurringBillService.getPendingBills(monthKey),
         recurringBillService.listBillInstancesForMonth(monthKey),
+        accountService.listAccounts(),
       ]);
       setCategories(categoryRows);
       setBills(allBills);
       setPendingBills(pending);
       setBillInstances(instances);
+      setAccounts(accountRows);
     } catch {
       setBills([]);
       setPendingBills([]);
       setBillInstances([]);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -305,6 +324,7 @@ export default function BillsScreen() {
           <View style={{ marginTop: 8, gap: 8 }}>
             {pendingBills.map((bill) => {
               const dueDate = recurringBillService.getDueDateForMonth(monthKey, bill.due_day);
+              const selectedAccountId = billPayAccounts[bill.id] ?? defaultAccountId;
               return (
                 <View
                   key={bill.id}
@@ -322,10 +342,23 @@ export default function BillsScreen() {
                   <Text style={{ color: theme.colors.onSurfaceVariant }} className="text-[11px]">
                     {formatMoney(bill.amount, locale, currency)} • {dueDate}
                   </Text>
+                  {accountOptions.length > 0 ? (
+                    <View style={{ marginTop: 10 }}>
+                      <ComboSelect
+                        label={locale === "ar" ? "الحساب" : "Account"}
+                        placeholder={locale === "ar" ? "اختر" : "Select"}
+                        value={selectedAccountId}
+                        options={accountOptions}
+                        onChange={(value) =>
+                          setBillPayAccounts((prev) => ({ ...prev, [bill.id]: value }))
+                        }
+                      />
+                    </View>
+                  ) : null}
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
                     <Pressable
                       onPress={async () => {
-                        await recurringBillService.applyBill(bill.id, dueDate);
+                        await recurringBillService.applyBill(bill.id, dueDate, selectedAccountId);
                         await load();
                       }}
                       style={{

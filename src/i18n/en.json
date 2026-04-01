@@ -12,6 +12,7 @@
     "dashboard": "Dashboard",
     "goals": "Goals",
     "months": "Months",
+    "tools": "Tools",
     "settings": "Settings"
   },
   "dashboard": {
@@ -57,6 +58,33 @@
     "topIncomeCategory": "Top Income Category",
     "topExpenseCategory": "Top Expense Category",
     "highestSpendDay": "Highest Spend Day"
+  },
+  "tools": {
+    "title": "Tools",
+    "budget": "Budget",
+    "account": "Account",
+    "history": "History",
+    "all": "All",
+    "month": "Month",
+    "assets": "Assets",
+    "liabilities": "Liabilities",
+    "total": "Total",
+    "addAccount": "Add New Account",
+    "createAccount": "Create Account",
+    "updateAccount": "Update Account",
+    "deleteAccount": "Delete Account",
+    "deleteAccountConfirm": "This account will be deleted if it has no transactions.",
+    "delete": "Delete",
+    "editMode": "Edit mode is on",
+    "deleteMode": "Delete mode is on",
+    "done": "Done",
+    "selectGroup": "Select Account Group",
+    "group": "Group",
+    "name": "Account name",
+    "amount": "Amount",
+    "description": "Description",
+    "notes": "Notes",
+    "save": "Save"
   },
   "settings": {
     "title": "Settings",

@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getAll, getFirst, runInTransaction, runQuery } from '@/src/db/client';
 import { settingsService } from '@/src/services/settingsService';
+import { accountService } from '@/src/services/accountService';
 import { dailySummaryService } from '@/src/services/dailySummaryService'; // افترضنا وجوده
 import type { CreateTransactionInput, UpdateTransactionInput } from '@/src/types/dto';
 import type { Transaction, TransactionKind } from '@/src/types/domain';
@@ -14,9 +15,10 @@ interface TransactionRow {
   signed_amount: number;
   amount_abs: number;
   category_id: number | null;
+  account_id: number | null;
   note: string | null;
   occurred_at: string;
-  source: 'manual' | 'system' | 'import';
+  source: 'manual' | 'system' | 'import' | 'transfer';
   is_deleted: number;
   cancel_reason: string | null;
   cancelled_at: string | null;
@@ -40,6 +42,7 @@ const mapTransaction = (row: TransactionRow): Transaction => ({
   signedAmount: row.signed_amount,
   amountAbs: row.amount_abs,
   categoryId: row.category_id,
+  accountId: row.account_id ?? null,
   note: row.note,
   occurredAt: row.occurred_at,
   source: row.source,
@@ -93,18 +96,42 @@ export const transactionService = {
       const now = nowIso();
       const amount = Math.round(input.amount * 100) / 100;
       const signedAmount = signedFromKind(input.kind, amount);
+      const accountId = typeof input.accountId === 'number'
+        ? input.accountId
+        : await accountService.getDefaultAccountId();
 
       // 1. Get and Update App Balance
       const currentBalance = await settingsService.getBalance();
       const newBalance = currentBalance + signedAmount;
       await settingsService.updateBalance(newBalance, db);
 
+      // 1.1 Update Account Balance
+      const accountRow = await getFirst<{ balance: number }>(
+        'SELECT balance FROM accounts WHERE id = ?;',
+        [accountId],
+        db,
+      );
+      if (!accountRow) throw new Error('Account not found');
+      const nextAccountBalance = (accountRow.balance ?? 0) + signedAmount;
+      await accountService.updateAccountBalance(accountId, nextAccountBalance, db);
+
       // 2. Insert Transaction with balance_after
       await runQuery(
         `INSERT INTO transactions
-         (kind, signed_amount, amount_abs, category_id, note, occurred_at, source, is_deleted, balance_after, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'manual', 0, ?, ?, ?);`,
-        [input.kind, signedAmount, amount, input.categoryId ?? null, input.note ?? null, input.occurredAt, newBalance, now, now],
+         (kind, signed_amount, amount_abs, category_id, account_id, note, occurred_at, source, is_deleted, balance_after, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', 0, ?, ?, ?);`,
+        [
+          input.kind,
+          signedAmount,
+          amount,
+          input.categoryId ?? null,
+          accountId,
+          input.note ?? null,
+          input.occurredAt,
+          newBalance,
+          now,
+          now,
+        ],
         db
       );
 
@@ -124,17 +151,40 @@ export const transactionService = {
     const now = nowIso();
     const amount = Math.round(input.amount * 100) / 100;
     const signedAmount = signedFromKind(input.kind, amount);
+    const accountId = typeof input.accountId === 'number'
+      ? input.accountId
+      : await accountService.getDefaultAccountId();
 
     // This is often called inside another transaction, so we use dbArg
     const currentBalance = await settingsService.getBalance();
     const newBalance = currentBalance + signedAmount;
     await settingsService.updateBalance(newBalance, dbArg);
 
+    const accountRow = await getFirst<{ balance: number }>(
+      'SELECT balance FROM accounts WHERE id = ?;',
+      [accountId],
+      dbArg,
+    );
+    if (!accountRow) throw new Error('Account not found');
+    const nextAccountBalance = (accountRow.balance ?? 0) + signedAmount;
+    await accountService.updateAccountBalance(accountId, nextAccountBalance, dbArg);
+
     const result = await runQuery(
       `INSERT INTO transactions
-       (kind, signed_amount, amount_abs, category_id, note, occurred_at, source, is_deleted, balance_after, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'system', 0, ?, ?, ?);`,
-      [input.kind, signedAmount, amount, input.categoryId ?? null, input.note ?? null, input.occurredAt, newBalance, now, now],
+       (kind, signed_amount, amount_abs, category_id, account_id, note, occurred_at, source, is_deleted, balance_after, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'system', 0, ?, ?, ?);`,
+      [
+        input.kind,
+        signedAmount,
+        amount,
+        input.categoryId ?? null,
+        accountId,
+        input.note ?? null,
+        input.occurredAt,
+        newBalance,
+        now,
+        now,
+      ],
       dbArg,
     );
 
@@ -173,6 +223,7 @@ export const transactionService = {
         amount: current.amountAbs,
         categoryId: null,
         note: reversalNote,
+        accountId: current.accountId ?? undefined,
         occurredAt: nowIso(),
       }, db);
 
@@ -180,6 +231,79 @@ export const transactionService = {
       if (['expense', 'bill_payment', 'work_expense'].includes(current.kind)) {
         await dailySummaryService.updateDailySummary(current.occurredAt, db);
       }
+    });
+  },
+
+  async createTransfer(input: {
+    amount: number;
+    fromAccountId: number;
+    toAccountId: number;
+    occurredAt: string;
+    note?: string | null;
+  }) {
+    assertPositiveAmount(input.amount);
+    if (input.fromAccountId === input.toAccountId) {
+      throw new Error('Source and destination accounts must be different');
+    }
+
+    return await runInTransaction(async (db) => {
+      const now = nowIso();
+      const amount = Math.round(input.amount * 100) / 100;
+
+      const fromRow = await getFirst<{ balance: number }>(
+        'SELECT balance FROM accounts WHERE id = ?;',
+        [input.fromAccountId],
+        db,
+      );
+      const toRow = await getFirst<{ balance: number }>(
+        'SELECT balance FROM accounts WHERE id = ?;',
+        [input.toAccountId],
+        db,
+      );
+      if (!fromRow || !toRow) throw new Error('Account not found');
+
+      await accountService.updateAccountBalance(input.fromAccountId, fromRow.balance - amount, db);
+      await accountService.updateAccountBalance(input.toAccountId, toRow.balance + amount, db);
+
+      const currentBalance = await settingsService.getBalance();
+
+      await runQuery(
+        `INSERT INTO transactions
+         (kind, signed_amount, amount_abs, category_id, account_id, note, occurred_at, source, is_deleted, balance_after, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'transfer', 0, ?, ?, ?);`,
+        [
+          'expense',
+          -amount,
+          amount,
+          null,
+          input.fromAccountId,
+          input.note ?? null,
+          input.occurredAt,
+          currentBalance,
+          now,
+          now,
+        ],
+        db,
+      );
+
+      await runQuery(
+        `INSERT INTO transactions
+         (kind, signed_amount, amount_abs, category_id, account_id, note, occurred_at, source, is_deleted, balance_after, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'transfer', 0, ?, ?, ?);`,
+        [
+          'income',
+          amount,
+          amount,
+          null,
+          input.toAccountId,
+          input.note ?? null,
+          input.occurredAt,
+          currentBalance,
+          now,
+          now,
+        ],
+        db,
+      );
     });
   },
 
@@ -200,34 +324,51 @@ export const transactionService = {
     assertPositiveAmount(nextAmount);
 
     return await runInTransaction(async (db) => {
-        const oldSigned = current.signed_amount;
-        const newSigned = signedFromKind(current.kind, nextAmount);
-        
-        // Adjust total balance: remove old, add new
-        const currentBalance = await settingsService.getBalance();
-        const adjustedBalance = currentBalance - oldSigned + newSigned;
-        await settingsService.updateBalance(adjustedBalance, db);
+      const oldSigned = current.signed_amount;
+      const newSigned = signedFromKind(current.kind, nextAmount);
+      const resolvedCurrentAccountId = current.account_id ?? (await accountService.getDefaultAccountId());
+      const nextAccountId = typeof input.accountId === 'number' ? input.accountId : resolvedCurrentAccountId;
 
-        await runQuery(
-          `UPDATE transactions
-           SET signed_amount = ?, amount_abs = ?, category_id = ?, note = ?, occurred_at = ?, balance_after = ?, updated_at = ?
-           WHERE id = ?;`,
-          [
-            newSigned,
-            nextAmount,
-            input.categoryId ?? current.category_id,
-            input.note ?? current.note,
-            input.occurredAt ?? current.occurred_at,
-            adjustedBalance, // This is simplified; accurate balance_after requires re-calculating all subsequent txs
-            nowIso(),
-            input.id,
-          ],
-          db
-        );
+      if (typeof input.accountId === 'number' && input.accountId !== resolvedCurrentAccountId) {
+        throw new Error('Changing account is not supported yet');
+      }
 
-        if (['expense', 'bill_payment', 'work_expense'].includes(current.kind)) {
-            await dailySummaryService.updateDailySummary(input.occurredAt ?? current.occurred_at, db);
-        }
+      // Adjust total balance: remove old, add new
+      const currentBalance = await settingsService.getBalance();
+      const adjustedBalance = currentBalance - oldSigned + newSigned;
+      await settingsService.updateBalance(adjustedBalance, db);
+
+      // Adjust account balance
+      const accountRow = await getFirst<{ balance: number }>(
+        'SELECT balance FROM accounts WHERE id = ?;',
+        [nextAccountId],
+        db,
+      );
+      if (!accountRow) throw new Error('Account not found');
+      const adjustedAccountBalance = (accountRow.balance ?? 0) - oldSigned + newSigned;
+      await accountService.updateAccountBalance(nextAccountId, adjustedAccountBalance, db);
+
+      await runQuery(
+        `UPDATE transactions
+         SET signed_amount = ?, amount_abs = ?, category_id = ?, note = ?, occurred_at = ?, balance_after = ?, account_id = ?, updated_at = ?
+         WHERE id = ?;`,
+        [
+          newSigned,
+          nextAmount,
+          input.categoryId ?? current.category_id,
+          input.note ?? current.note,
+          input.occurredAt ?? current.occurred_at,
+          adjustedBalance, // This is simplified; accurate balance_after requires re-calculating all subsequent txs
+          nextAccountId,
+          nowIso(),
+          input.id,
+        ],
+        db
+      );
+
+      if (['expense', 'bill_payment', 'work_expense'].includes(current.kind)) {
+        await dailySummaryService.updateDailySummary(input.occurredAt ?? current.occurred_at, db);
+      }
     });
   },
 
@@ -306,14 +447,15 @@ export const transactionService = {
       for (const row of rows) {
         await runQuery(
           `INSERT INTO transactions
-            (id, kind, signed_amount, amount_abs, category_id, note, occurred_at, source, is_deleted, cancel_reason, cancelled_at, balance_after, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            (id, kind, signed_amount, amount_abs, category_id, account_id, note, occurred_at, source, is_deleted, cancel_reason, cancelled_at, balance_after, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             row.id,
             row.kind,
             row.signed_amount,
             row.amount_abs,
             row.category_id ?? null,
+            row.account_id ?? null,
             row.note ?? null,
             row.occurred_at,
             row.source,

@@ -36,7 +36,7 @@ export const workService = {
    * تسجيل يوم عمل بالقيم الافتراضية
    * بيسحب المصاريف النشطة حالياً وبيخصمها من الرصيد ويسجلها في الـ log
    */
-  async logStandardWorkDay(dateIso: string) {
+  async logStandardWorkDay(dateIso: string, accountId?: number | null) {
     return await runInTransaction(async (db) => {
       const dateKey = dateIso.split('T')[0];
 
@@ -62,6 +62,7 @@ export const workService = {
           kind: 'work_expense',
           amount: totalExpenseAmount,
           note: `مصاريف عمل يومية (${activeExpenses.map(e => e.name).join(', ')})`,
+          accountId: typeof accountId === 'number' ? accountId : undefined,
           occurredAt: dateIso,
         }, db);
       }
@@ -102,6 +103,7 @@ export const workService = {
     shiftEnd?: string;
     expenseAmount: number;
     note?: string;
+    accountId?: number | null;
   }) {
     return await runInTransaction(async (db) => {
       const existing = await getFirst<{ id: number }>(
@@ -118,6 +120,7 @@ export const workService = {
           kind: 'work_expense',
           amount: input.expenseAmount,
           note: input.note || 'مصاريف عمل يدوية',
+          accountId: typeof input.accountId === 'number' ? input.accountId : undefined,
           occurredAt: input.date,
         }, db);
       }

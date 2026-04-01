@@ -9,6 +9,7 @@ import { transactionService } from '@/src/services/transactionService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Category, Transaction } from '@/src/types/domain';
 import { confirmAction } from '@/src/utils/confirm';
+import { ComboSelect } from '@/src/components/forms/ComboSelect';
 
 export default function EditTransactionScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -121,24 +122,16 @@ export default function EditTransactionScreen() {
           placeholder="Note"
           placeholderTextColor={theme.colors.onSurfaceVariant}
         />
-        {/* Category Chips */}
-        <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {categories.map((category) => (
-            <Pressable
-              key={category.id}
-              onPress={() => setCategoryId(category.id)}
-              style={{
-                borderRadius: 100,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                backgroundColor: categoryId === category.id ? theme.colors.primary : theme.colors.surfaceVariant,
-              }}>
-              <Text style={{ color: categoryId === category.id ? theme.colors.onPrimary : theme.colors.onSurfaceVariant }}>
-                {category.nameEn}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <ComboSelect
+          label={locale === 'ar' ? 'الفئة' : 'Category'}
+          placeholder={locale === 'ar' ? 'اختر الفئة' : 'Pick category'}
+          value={categoryId}
+          options={categories.map((category) => ({
+            value: category.id,
+            label: locale === 'ar' ? category.nameAr : category.nameEn,
+          }))}
+          onChange={(value) => setCategoryId(value)}
+        />
         <Pressable
           onPress={onSave}
           style={{ marginTop: 16, borderRadius: 12, backgroundColor: theme.colors.primary, paddingVertical: 12 }}>

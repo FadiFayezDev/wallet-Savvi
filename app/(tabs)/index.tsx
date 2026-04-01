@@ -1,6 +1,7 @@
 "use client";
 
 import { useIsFocused } from "@react-navigation/native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,15 +13,17 @@ import {
   StyleSheet,
 } from "react-native";
 import { FAB, IconButton, Portal, Surface, useTheme } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import InfiniteDayPicker from "@/src/components/FlatList/InfiniteDayPicker";
 import { AnimatedBalanceText } from "@/src/components/common/AnimatedBalanceText";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { transactionService } from "@/src/services/transactionService";
+import { accountService } from "@/src/services/accountService";
 import { workService } from "@/src/services/workService";
 import { useDashboardStore } from "@/src/stores/dashboardStore";
 import { useSettingsStore } from "@/src/stores/settingsStore";
-import type { Transaction, WorkDayLog } from "@/src/types/domain";
+import type { Account, Transaction, WorkDayLog } from "@/src/types/domain";
 import { toMonthKey } from "@/src/utils/date";
 import { formatMoney } from "@/src/utils/money";
 import { withAlpha } from "@/src/utils/colors";
@@ -47,7 +50,6 @@ function useStaggeredAnim(count: number, trigger: unknown) {
 }
 
 export default function DashboardScreen() {
-  const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -58,16 +60,21 @@ export default function DashboardScreen() {
   const [dayBillInstances, setDayBillInstances] = useState<any[]>([]);
   const [dayPaidBillTotal, setDayPaidBillTotal] = useState(0);
   const [dayWorkLog, setDayWorkLog] = useState<WorkDayLog | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
   const [focusTick, setFocusTick] = useState(0);
+  const [fabVisible, setFabVisible] = useState(true);
 
   const isFocused = useIsFocused();
   const router    = useRouter();
   const theme     = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const headerHeight = useRef(new Animated.Value(310)).current;
   const detailsOpacity = useRef(new Animated.Value(1)).current;
   const detailsTranslate = useRef(new Animated.Value(0)).current;
   const isCollapsedRef = useRef(false);
+  const fabVisibleRef = useRef(true);
 
   const settings      = useSettingsStore((s) => s.settings);
   const summary       = useDashboardStore((s) => s.summary);
@@ -123,6 +130,7 @@ export default function DashboardScreen() {
     let income = 0, expense = 0, billPayments = 0,
         work = 0, goalTransfer = 0, goalRefund = 0;
     for (const item of dayTransactions) {
+      if (item.source === "transfer") continue;
       switch (item.kind) {
         case "income":        income       += item.amountAbs; break;
         case "expense":       expense      += item.amountAbs; break;
@@ -196,6 +204,14 @@ export default function DashboardScreen() {
     if (!isFocused) return;
     loadDayDetails(selectedDate).catch(() => {});
   }, [isFocused, selectedDate, loadDayDetails]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    accountService
+      .listAccounts()
+      .then((rows) => setAccounts(rows))
+      .catch(() => setAccounts([]));
+  }, [isFocused]);
 
   useEffect(() => {
     if (isFocused) setFocusTick((v) => v + 1);
@@ -430,6 +446,14 @@ export default function DashboardScreen() {
             isCollapsedRef.current = false;
             expandHeader();
           }
+          if (y > 120 && fabVisibleRef.current) {
+            fabVisibleRef.current = false;
+            setFabVisible(false);
+          }
+          if (y <= 40 && !fabVisibleRef.current) {
+            fabVisibleRef.current = true;
+            setFabVisible(true);
+          }
         }}
         scrollEventThrottle={16}
       >
@@ -622,9 +646,28 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            dayTransactions.map((item: Transaction, idx) => {
-              const meta = transactionKindMeta[item.kind as keyof typeof transactionKindMeta] 
-              ?? transactionKindMeta.expense;
+            dayTransactions.map((item: Transaction) => {
+              const isTransfer = item.source === "transfer";
+              const meta = isTransfer
+                ? {
+                    icon: "swap-horizontal",
+                    color: theme.colors.info ?? theme.colors.primary,
+                    bg: withAlpha(theme.colors.info ?? theme.colors.primary, 0.12),
+                  }
+                : (transactionKindMeta[item.kind as keyof typeof transactionKindMeta]
+                  ?? transactionKindMeta.expense);
+              const isIncome = item.signedAmount >= 0;
+              const accountName = accounts.find((acc) => acc.id === item.accountId)?.name;
+              const transferLabel = isIncome ? (isArabic ? "تحويل وارد" : "Transfer in") : (isArabic ? "تحويل صادر" : "Transfer out");
+              const titleText = item.note || (isTransfer ? transferLabel : item.kind);
+              const subtitleParts = [
+                isTransfer
+                  ? (accountName
+                      ? (isIncome ? (isArabic ? `إلى ${accountName}` : `To ${accountName}`) : (isArabic ? `من ${accountName}` : `From ${accountName}`))
+                      : null)
+                  : accountName,
+                new Date(item.occurredAt).toLocaleDateString(locale),
+              ].filter(Boolean);
 
               const txAnim = new Animated.Value(0);
               return (
@@ -645,11 +688,13 @@ export default function DashboardScreen() {
                       {/* نص */}
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.txTitle, { color: theme.colors.onSurface }]} numberOfLines={1}>
-                          {item.note || item.kind}
+                          {titleText}
                         </Text>
-                        <Text style={[styles.txDate, { color: theme.colors.onSurfaceVariant }]}>
-                          {new Date(item.occurredAt).toLocaleDateString(locale)}
-                        </Text>
+                        {subtitleParts.length > 0 ? (
+                          <Text style={[styles.txDate, { color: theme.colors.onSurfaceVariant }]}>
+                            {subtitleParts.join(" • ")}
+                          </Text>
+                        ) : null}
                       </View>
                       {/* المبلغ */}
                       <Text style={[styles.txAmount, { color: item.signedAmount >= 0 ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.error }]}>
@@ -665,45 +710,20 @@ export default function DashboardScreen() {
       </Animated.ScrollView>
 
       {/* ── FAB ── */}
-      {isFocused && (
+      {isFocused && fabVisible && (
         <Portal>
-          <FAB.Group
-            open={isOpen}
-            visible={isFocused}
-            icon={isOpen ? "close" : "plus"}
+          <FAB
+            icon="plus"
             color={theme.colors.onPrimary}
-            actions={[
-              {
-                icon: "plus",
-                label: isArabic ? "إضافة دخل" : "Income",
-                onPress: () => router.push("/transactions/add-income"),
-                color: theme.colors.success ?? theme.colors.secondary,
-                labelTextColor: theme.colors.onSurface,
-                style: { backgroundColor: "transparent", elevation: 0 },
-                containerStyle: {
-                  backgroundColor: theme.colors.surface, borderRadius: 20,
-                  marginBottom: 8, paddingRight: 10,
-                  borderWidth: 1, borderColor: withAlpha(theme.colors.success ?? theme.colors.secondary, 0.3),
-                },
-              },
-              {
-                icon: "minus",
-                label: isArabic ? "إضافة مصروف" : "Expense",
-                onPress: () => router.push("/transactions/add-expense"),
-                color: theme.colors.error,
-                labelTextColor: theme.colors.onSurface,
-                style: { backgroundColor: "transparent", elevation: 0 },
-                containerStyle: {
-                  backgroundColor: theme.colors.surface, borderRadius: 20,
-                  marginBottom: 8, paddingRight: 10,
-                  borderWidth: 1, borderColor: withAlpha(theme.colors.error, 0.3),
-                },
-              },
-            ]}
-            onStateChange={({ open }) => setIsOpen(open)}
-            style={{ paddingBottom: 90 }}
-            fabStyle={{ backgroundColor: theme.colors.primary, borderRadius: 18, elevation: 6 }}
-            backdropColor={withAlpha(theme.colors.scrim ?? theme.colors.onBackground, 0.8)}
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: tabBarHeight + Math.max(12, insets.bottom),
+              backgroundColor: theme.colors.primary,
+              borderRadius: 18,
+              elevation: 6,
+            }}
+            onPress={() => router.push("/transactions/add")}
           />
         </Portal>
       )}

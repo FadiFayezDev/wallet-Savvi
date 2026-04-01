@@ -18,7 +18,8 @@ export const dailySummaryService = {
        FROM transactions 
        WHERE date(occurred_at) = date(?) 
        AND is_deleted = 0 
-       AND kind IN ('expense', 'bill_payment', 'work_expense');`,
+       AND kind IN ('expense', 'bill_payment', 'work_expense')
+       AND source != 'transfer';`,
       [dateKey],
       dbArg
     );

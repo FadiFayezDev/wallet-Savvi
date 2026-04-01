@@ -8,10 +8,12 @@ import { IconButton, useTheme } from "react-native-paper";
 import { CalculatorField } from "@/src/components/common/CalculatorField";
 import { DatePickerField } from "@/src/components/common/DatePickerField";
 import { TimePickerField, formatTimeLabel } from "@/src/components/common/TimePickerField";
+import { ComboSelect } from "@/src/components/forms/ComboSelect";
+import { accountService } from "@/src/services/accountService";
 import { notificationService } from "@/src/services/notificationService";
 import { WORK_SKIP_NOTE, workService } from "@/src/services/workService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
-import type { DailyWorkExpense, WorkSchedule, WorkDayLog } from "@/src/types/domain";
+import type { Account, DailyWorkExpense, WorkSchedule, WorkDayLog } from "@/src/types/domain";
 import { confirmAction } from "@/src/utils/confirm";
 import { formatMoney } from "@/src/utils/money";
 
@@ -47,6 +49,8 @@ export default function WorkScreen() {
   const [expenses, setExpenses] = useState<DailyWorkExpense[]>([]);
   const [logs, setLogs] = useState<WorkDayLog[]>([]);
   const [todayLog, setTodayLog] = useState<WorkDayLog | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>("today");
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
   const [showCustom, setShowCustom] = useState(false);
@@ -72,16 +76,20 @@ export default function WorkScreen() {
   const todayDow = today.getDay();
 
   const load = useCallback(async () => {
-    const [scheduleRows, expenseRows, logRows, todayLogRow] = await Promise.all([
+    const [scheduleRows, expenseRows, logRows, todayLogRow, accountRows] = await Promise.all([
       workService.listSchedule(),
       workService.listDailyExpenses(),
       workService.listWorkLogs(20),
       workService.getWorkLogByDate(todayIso),
+      accountService.listAccounts(),
     ]);
     setSchedule(scheduleRows);
     setExpenses(expenseRows);
     setLogs(logRows);
     setTodayLog(todayLogRow);
+    setAccounts(accountRows);
+    const defaultAccount = accountRows.find((acc) => acc.isDefault);
+    setSelectedAccountId((prev) => prev ?? defaultAccount?.id ?? accountRows[0]?.id ?? null);
   }, [todayIso]);
 
   useFocusEffect(
@@ -97,6 +105,15 @@ export default function WorkScreen() {
   const activeExpensesTotal = useMemo(
     () => expenses.filter((e) => e.isActive).reduce((sum, e) => sum + e.defaultAmount, 0),
     [expenses],
+  );
+
+  const accountOptions = useMemo(
+    () =>
+      accounts.map((acc) => ({
+        value: acc.id,
+        label: acc.name,
+      })),
+    [accounts],
   );
 
   const todayStatus = useMemo(() => {
@@ -147,7 +164,7 @@ export default function WorkScreen() {
       Alert.alert(isAr ? "اليوم إجازة" : "Not a work day");
       return;
     }
-    const result = await workService.logStandardWorkDay(todayIso);
+    const result = await workService.logStandardWorkDay(todayIso, selectedAccountId ?? undefined);
     if (!result.success && result.status === "already_logged") {
       Alert.alert(isAr ? "اليوم مسجل بالفعل" : "Already logged today");
       return;
@@ -213,6 +230,7 @@ export default function WorkScreen() {
         shiftEnd: shiftEnd || undefined,
         expenseAmount: parsed,
         note: logNote || undefined,
+        accountId: selectedAccountId ?? undefined,
       });
       setShiftStart(null);
       setShiftEnd(null);
@@ -326,6 +344,16 @@ export default function WorkScreen() {
                 {todayKey}
               </Text>
             </View>
+
+            {accountOptions.length > 0 ? (
+              <ComboSelect
+                label={isAr ? "الحساب المستخدم" : "Account used"}
+                placeholder={isAr ? "اختر" : "Select"}
+                value={selectedAccountId}
+                options={accountOptions}
+                onChange={(value) => setSelectedAccountId(value)}
+              />
+            ) : null}
 
             <View style={styles.actionsRow}>
               <Pressable

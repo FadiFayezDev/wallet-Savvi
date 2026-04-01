@@ -9,6 +9,7 @@ import { IconButton, useTheme } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 
 import { CalculatorField } from '@/src/components/common/CalculatorField';
+import { ComboSelect } from '@/src/components/forms/ComboSelect';
 import { backupService } from '@/src/services/backupService';
 import { dailySummaryService } from '@/src/services/dailySummaryService';
 import { notificationService } from '@/src/services/notificationService';
@@ -78,78 +79,6 @@ function ActionButton({
   );
 }
 
-// ── قائمة منسدلة ────────────────────────────────────────────────
-function SelectDropdown({
-  valueLabel,
-  options,
-  selectedKey,
-  isOpen,
-  onToggle,
-  onSelect,
-}: {
-  valueLabel: string;
-  options: { key: string; label: string }[];
-  selectedKey: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onSelect: (key: string) => void;
-}) {
-  const theme = useTheme();
-  return (
-    <View>
-      <Pressable
-        onPress={onToggle}
-        style={[
-          styles.dropdownTrigger,
-          { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outlineVariant },
-        ]}
-      >
-        <Text style={[styles.dropdownValue, { color: theme.colors.onSurface }]}>{valueLabel}</Text>
-        <IconButton
-          icon={isOpen ? 'chevron-up' : 'chevron-down'}
-          iconColor={theme.colors.onSurfaceVariant}
-          size={18}
-          style={styles.noMargin}
-        />
-      </Pressable>
-      {isOpen ? (
-        <View
-          style={[
-            styles.dropdownList,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
-          ]}
-        >
-          {options.map((opt) => {
-            const active = opt.key === selectedKey;
-            return (
-              <Pressable
-                key={opt.key}
-                onPress={() => onSelect(opt.key)}
-                style={[
-                  styles.dropdownOption,
-                  active && { backgroundColor: `${theme.colors.primary}18`, borderColor: theme.colors.primary },
-                ]}
-              >
-                <Text style={[styles.dropdownOptionText, { color: theme.colors.onSurface }]}>
-                  {opt.label}
-                </Text>
-                {active ? (
-                  <IconButton
-                    icon="check"
-                    iconColor={theme.colors.primary}
-                    size={16}
-                    style={styles.noMargin}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
 // ── الشاشة ───────────────────────────────────────────────────────
 const lockMethods:  ('none' | 'pin' | 'biometric')[]    = ['none', 'pin', 'biometric'];
 const themeModes:   ('light' | 'dark' | 'system')[]     = ['light', 'dark', 'system'];
@@ -166,7 +95,6 @@ export default function SettingsTab() {
   const [busy,            setBusy]            = useState(false);
   const [dailyLimitInput, setDailyLimitInput] = useState('');
   const [savingLimit,     setSavingLimit]     = useState(false);
-  const [openSelect,      setOpenSelect]      = useState<null | 'locale' | 'theme' | 'themeSource' | 'timeFormat' | 'lockMethod'>(null);
 
   useEffect(() => {
     if (!settings) loadSettings().catch(() => undefined);
@@ -188,23 +116,7 @@ export default function SettingsTab() {
   const isAr             = settings.locale === 'ar';
   const themeSourceValue = settings.themeSource ?? 'material';
   const timeFormatValue  = settings.timeFormat  ?? '24h';
-  const selectedLocaleLabel = settings.locale === 'ar' ? 'العربية' : 'English';
-  const selectedThemeLabel = t(`settings.${settings.themeMode}`);
-  const selectedThemeSourceLabel = themeSourceValue === 'material'
-    ? 'Material You'
-    : themeSourceValue === 'mono'
-      ? (isAr ? 'أبيض وأسود' : 'Black & White')
-      : themeSourceValue === 'custom'
-        ? (isAr ? 'مخصص' : 'Custom')
-        : themeSourceValue === 'palette'
-          ? (isAr ? 'لوحة ألوان' : 'Palette')
-        : (isAr ? 'ثابت' : 'Fixed');
-  const selectedTimeFormatLabel = timeFormatValue === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h');
-  const selectedLockLabel = t(`settings.${settings.lockMethod}`);
 
-  const toggleSelect = (key: typeof openSelect) => {
-    setOpenSelect((prev) => (prev === key ? null : key));
-  };
 
   const saveLimit = async (clear = false) => {
     if (!clear) {
@@ -248,38 +160,32 @@ export default function SettingsTab() {
 
       {/* ── اللغة ── */}
       <SettingSection icon="translate" title={t('settings.language')}>
-        <SelectDropdown
-          valueLabel={selectedLocaleLabel}
-          selectedKey={settings.locale}
-          isOpen={openSelect === 'locale'}
-          onToggle={() => toggleSelect('locale')}
-          onSelect={async (locale) => {
-            await patchSettings({ locale: locale as 'ar' | 'en' });
-            await i18n.changeLanguage(locale);
-            setOpenSelect(null);
-          }}
+        <ComboSelect
+          value={settings.locale}
+          placeholder={isAr ? 'اختر' : 'Select'}
           options={locales.map((locale) => ({
-            key: locale,
+            value: locale,
             label: locale === 'ar' ? 'العربية' : 'English',
           }))}
+          onChange={async (locale) => {
+            await patchSettings({ locale: locale as 'ar' | 'en' });
+            await i18n.changeLanguage(locale);
+          }}
         />
       </SettingSection>
 
       {/* ── الثيم ── */}
       <SettingSection icon="palette-outline" title={t('settings.theme')}>
-        <SelectDropdown
-          valueLabel={selectedThemeLabel}
-          selectedKey={settings.themeMode}
-          isOpen={openSelect === 'theme'}
-          onToggle={() => toggleSelect('theme')}
-          onSelect={(mode) => {
-            patchSettings({ themeMode: mode as 'light' | 'dark' | 'system' }).catch(() => undefined);
-            setOpenSelect(null);
-          }}
+        <ComboSelect
+          value={settings.themeMode}
+          placeholder={isAr ? 'اختر' : 'Select'}
           options={themeModes.map((mode) => ({
-            key: mode,
+            value: mode,
             label: t(`settings.${mode}`),
           }))}
+          onChange={(mode) => {
+            patchSettings({ themeMode: mode as 'light' | 'dark' | 'system' }).catch(() => undefined);
+          }}
         />
       </SettingSection>
 
@@ -289,33 +195,11 @@ export default function SettingsTab() {
         title={isAr ? 'مصدر الثيم' : 'Theme Source'}
         subtitle={isAr ? 'Material You أو ثيم ثابت' : 'Dynamic Material You or fixed theme'}
       >
-        <SelectDropdown
-          valueLabel={selectedThemeSourceLabel}
-          selectedKey={themeSourceValue}
-          isOpen={openSelect === 'themeSource'}
-          onToggle={() => toggleSelect('themeSource')}
-          onSelect={(source) => {
-            if (source === 'custom' && !settings.activeThemeId) {
-              Alert.alert(
-                isAr ? 'اختر ثيم أولاً' : 'Pick a theme first',
-                isAr ? 'افتح مكتبة الثيمات واختر ثيمًا مخصصًا لتفعيله.' : 'Open theme library and pick a custom theme to enable it.',
-              );
-              setOpenSelect(null);
-              return;
-            }
-            if (source === 'palette' && !settings.activePaletteThemeId) {
-              Alert.alert(
-                isAr ? 'اختر ثيم لوحة أولاً' : 'Pick a palette first',
-                isAr ? 'افتح مكتبة لوحة الألوان واختر ثيمًا لتفعيله.' : 'Open palette library and pick a palette theme to enable it.',
-              );
-              setOpenSelect(null);
-              return;
-            }
-            patchSettings({ themeSource: source as 'material' | 'fixed' | 'mono' | 'custom' | 'palette' }).catch(() => undefined);
-            setOpenSelect(null);
-          }}
+        <ComboSelect
+          value={themeSourceValue}
+          placeholder={isAr ? 'اختر' : 'Select'}
           options={themeSources.map((source) => ({
-            key: source,
+            value: source,
             label: source === 'material'
               ? 'Material You'
               : source === 'mono'
@@ -326,6 +210,23 @@ export default function SettingsTab() {
                     ? (isAr ? 'لوحة ألوان' : 'Palette')
                   : (isAr ? 'ثابت' : 'Fixed'),
           }))}
+          onChange={(source) => {
+            if (source === 'custom' && !settings.activeThemeId) {
+              Alert.alert(
+                isAr ? 'اختر ثيم أولاً' : 'Pick a theme first',
+                isAr ? 'افتح مكتبة الثيمات واختر ثيمًا مخصصًا لتفعيله.' : 'Open theme library and pick a custom theme to enable it.',
+              );
+              return;
+            }
+            if (source === 'palette' && !settings.activePaletteThemeId) {
+              Alert.alert(
+                isAr ? 'اختر ثيم لوحة أولاً' : 'Pick a palette first',
+                isAr ? 'افتح مكتبة لوحة الألوان واختر ثيمًا لتفعيله.' : 'Open palette library and pick a palette theme to enable it.',
+              );
+              return;
+            }
+            patchSettings({ themeSource: source as 'material' | 'fixed' | 'mono' | 'custom' | 'palette' }).catch(() => undefined);
+          }}
         />
       </SettingSection>
 
@@ -363,19 +264,16 @@ export default function SettingsTab() {
         title={isAr ? 'تنسيق الوقت' : 'Time Format'}
         subtitle={isAr ? '12 ساعة أو 24 ساعة' : '12-hour or 24-hour clock'}
       >
-        <SelectDropdown
-          valueLabel={selectedTimeFormatLabel}
-          selectedKey={timeFormatValue}
-          isOpen={openSelect === 'timeFormat'}
-          onToggle={() => toggleSelect('timeFormat')}
-          onSelect={(fmt) => {
-            patchSettings({ timeFormat: fmt as '12h' | '24h' }).catch(() => undefined);
-            setOpenSelect(null);
-          }}
+        <ComboSelect
+          value={timeFormatValue}
+          placeholder={isAr ? 'اختر' : 'Select'}
           options={timeFormats.map((fmt) => ({
-            key: fmt,
+            value: fmt,
             label: fmt === '12h' ? (isAr ? '١٢ ساعة' : '12h') : (isAr ? '٢٤ ساعة' : '24h'),
           }))}
+          onChange={(fmt) => {
+            patchSettings({ timeFormat: fmt as '12h' | '24h' }).catch(() => undefined);
+          }}
         />
       </SettingSection>
 
@@ -412,12 +310,14 @@ export default function SettingsTab() {
 
       {/* ── الأمان ── */}
       <SettingSection icon="shield-lock-outline" title={t('settings.lockMethod')}>
-        <SelectDropdown
-          valueLabel={selectedLockLabel}
-          selectedKey={settings.lockMethod}
-          isOpen={openSelect === 'lockMethod'}
-          onToggle={() => toggleSelect('lockMethod')}
-          onSelect={async (method) => {
+        <ComboSelect
+          value={settings.lockMethod}
+          placeholder={isAr ? 'اختر' : 'Select'}
+          options={lockMethods.map((method) => ({
+            value: method,
+            label: t(`settings.${method}`),
+          }))}
+          onChange={async (method) => {
             if (method === 'pin') {
               const hasPin = await securityService.hasPin();
               if (!hasPin) { Alert.alert(isAr ? 'احفظ الـ PIN أولاً' : 'Set a PIN first'); return; }
@@ -427,12 +327,7 @@ export default function SettingsTab() {
               if (!canUse) { Alert.alert(isAr ? 'البصمة غير متاحة' : 'Biometric unavailable'); return; }
             }
             await patchSettings({ lockMethod: method as 'none' | 'pin' | 'biometric' });
-            setOpenSelect(null);
           }}
-          options={lockMethods.map((method) => ({
-            key: method,
-            label: t(`settings.${method}`),
-          }))}
         />
 
         {/* PIN */}
@@ -640,23 +535,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
 
-  // dropdown
-  dropdownTrigger: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 14, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 8,
-  },
-  dropdownValue: { fontSize: 14, fontWeight: '700' },
-  dropdownList: {
-    borderRadius: 14, borderWidth: 1,
-    padding: 6, marginTop: 8, gap: 6,
-  },
-  dropdownOption: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10, paddingVertical: 10,
-    borderRadius: 10, borderWidth: 1, borderColor: 'transparent',
-  },
-  dropdownOptionText: { fontSize: 13, fontWeight: '700' },
+  // dropdown styles removed (ComboSelect handles dropdown UI)
 });

@@ -328,6 +328,48 @@ CREATE TABLE IF NOT EXISTS palette_themes (
 ALTER TABLE app_settings ADD COLUMN active_palette_theme_id INTEGER;
 `;
 
+const migration008 = `
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  group_key TEXT NOT NULL,
+  balance REAL NOT NULL DEFAULT 0,
+  description TEXT,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  is_hidden INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+ALTER TABLE transactions ADD COLUMN account_id INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_group ON accounts(group_key);
+
+INSERT INTO accounts (name, group_key, balance, description, is_default, is_hidden, created_at, updated_at)
+SELECT * FROM (
+  SELECT 'Cash', 'cash', 0, NULL, 1, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Account', 'account', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Debit card', 'debit_card', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Savings', 'savings', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Top up prepaid', 'top_up_prepaid', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Investments', 'investments', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Overdraft', 'overdraft', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Loan', 'loan', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Insurance', 'insurance', 0, NULL, 0, 0, datetime('now'), datetime('now')
+  UNION ALL SELECT 'Other', 'other', 0, NULL, 0, 0, datetime('now'), datetime('now')
+)
+WHERE NOT EXISTS (SELECT 1 FROM accounts);
+
+UPDATE transactions
+SET account_id = (SELECT id FROM accounts WHERE is_default = 1 LIMIT 1)
+WHERE account_id IS NULL;
+
+UPDATE accounts
+SET balance = (SELECT balance FROM app_settings WHERE id = 1)
+WHERE is_default = 1;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, name: '001_init', sql: migration001 },
   { version: 2, name: '002_indexes', sql: migration002 },
@@ -336,4 +378,5 @@ export const migrations: Migration[] = [
   { version: 5, name: '005_app_settings_notifications', sql: migration005 },
   { version: 6, name: '006_custom_themes', sql: migration006 },
   { version: 7, name: '007_palette_themes', sql: migration007 },
+  { version: 8, name: '008_accounts', sql: migration008 },
 ];

@@ -50,8 +50,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="months"
         options={{
-          title: t('tabs.months'),
-          tabBarIcon: ({ color }) => <Ionicons size={22} name="calendar-outline" color={color} />,
+          title: t('tabs.tools'),
+          tabBarIcon: ({ color }) => <Ionicons size={22} name="construct-outline" color={color} />,
         }}
       />
       <Tabs.Screen

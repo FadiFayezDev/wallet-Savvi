@@ -6,6 +6,17 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type ThemeSource = 'material' | 'fixed' | 'mono' | 'custom' | 'palette';
 export type TimeFormat = '12h' | '24h';
 export type BillStatus = 'pending' | 'paid' | 'skipped';
+export type AccountGroupKey =
+  | 'cash'
+  | 'account'
+  | 'debit_card'
+  | 'savings'
+  | 'top_up_prepaid'
+  | 'investments'
+  | 'overdraft'
+  | 'loan'
+  | 'insurance'
+  | 'other';
 
 export interface Category {
   id: number;
@@ -41,13 +52,26 @@ export interface Transaction {
   signedAmount: number;
   amountAbs: number;
   categoryId: number | null;
+  accountId: number | null;
   note: string | null;
   occurredAt: string;
-  source: 'manual' | 'system' | 'import';
+  source: 'manual' | 'system' | 'import' | 'transfer';
   isDeleted: boolean;
   cancelReason: string | null; // Added
   cancelledAt: string | null;  // Added
   balanceAfter: number | null; // Added
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Account {
+  id: number;
+  name: string;
+  groupKey: AccountGroupKey;
+  balance: number;
+  description: string | null;
+  isDefault: boolean;
+  isHidden: boolean;
   createdAt: string;
   updatedAt: string;
 }

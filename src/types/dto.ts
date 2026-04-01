@@ -4,6 +4,7 @@ export interface CreateTransactionInput {
   kind: TransactionKind;
   amount: number;
   categoryId?: number | null;
+  accountId?: number | null;
   note?: string | null;
   occurredAt: string;
 }
@@ -12,6 +13,7 @@ export interface UpdateTransactionInput {
   id: number;
   amount?: number;
   categoryId?: number | null;
+  accountId?: number | null;
   note?: string | null;
   occurredAt?: string;
 }
@@ -101,6 +103,7 @@ export interface BackupPayloadV1 {
     goal_transactions: Record<string, unknown>[];
     monthly_reports: Record<string, unknown>[];
     settings: Record<string, unknown>[];
+    accounts?: Record<string, unknown>[];
     report_category_breakdown?: Record<string, unknown>[];
     recurring_bills?: Record<string, unknown>[];
     bill_instances?: Record<string, unknown>[];

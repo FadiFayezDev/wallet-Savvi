@@ -13,6 +13,7 @@ export default function TransactionsLayout() {
     }}>
       <Stack screenOptions={{ headerShown: false }}>
         {/* أسماء الملفات اللي عندك جوا المجلد */}
+        <Stack.Screen name="add" />
         <Stack.Screen name="add-expense" />
         <Stack.Screen name="add-income" />
         <Stack.Screen name="[id]" />

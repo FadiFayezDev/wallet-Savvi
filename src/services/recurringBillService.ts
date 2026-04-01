@@ -40,7 +40,7 @@ export const recurringBillService = {
    * دفع الفاتورة (العملية الأهم)
    * بتعمل Transaction حقيقية وبتسجل Instance للفاتورة وبتخصم من الرصيد
    */
-  async applyBill(billId: number, dueDate: string) {
+  async applyBill(billId: number, dueDate: string, accountId?: number | null) {
     return await runInTransaction(async (db) => {
       // 1. جلب بيانات الفاتورة
       const bill = await getFirst<any>(
@@ -57,6 +57,7 @@ export const recurringBillService = {
         amount: bill.amount,
         categoryId: bill.category_id,
         note: `دفع فاتورة: ${bill.name}`,
+        accountId: typeof accountId === 'number' ? accountId : undefined,
         occurredAt: nowIso(),
       }, db);
 

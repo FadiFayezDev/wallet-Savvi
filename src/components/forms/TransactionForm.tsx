@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
 import { categoryService } from '@/src/services/categoryService';
-import type { Category, TransactionKind } from '@/src/types/domain';
+import { accountService } from '@/src/services/accountService';
+import type { Account, Category, TransactionKind } from '@/src/types/domain';
+import { ACCOUNT_GROUP_MAP } from '@/src/constants/accountGroups';
+import { ComboSelect } from '@/src/components/forms/ComboSelect';
 
 interface TransactionFormProps {
   kind: Extract<TransactionKind, 'income' | 'expense'>;
-  onSubmit: (input: { amount: number; categoryId: number | null; note: string | null }) => Promise<void>;
+  onSubmit: (input: { amount: number; categoryId: number | null; accountId: number | null; note: string | null }) => Promise<void>;
   submitLabel: string;
 }
 
@@ -21,6 +24,8 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
   const isFocused = useIsFocused();
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +50,20 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
       .catch(() => setCategories([]));
   }, [kind, isFocused]);
 
+  useEffect(() => {
+    if (!isFocused) return;
+    accountService
+      .listAccounts()
+      .then((rows) => {
+        setAccounts(rows);
+        if (rows.length > 0) {
+          const defaultAccount = rows.find((row) => row.isDefault);
+          setSelectedAccount((prev) => prev ?? defaultAccount?.id ?? rows[0].id);
+        }
+      })
+      .catch(() => setAccounts([]));
+  }, [isFocused]);
+
   const parsedAmount = useMemo(() => Number(amount), [amount]);
 
   const submit = async () => {
@@ -59,17 +78,26 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
       );
       return;
     }
+    if (!selectedAccount) {
+      Alert.alert(
+        locale === 'ar' ? 'اختر الحساب' : 'Pick an account',
+        locale === 'ar' ? 'اختيار الحساب مطلوب قبل الحفظ.' : 'Account is required before saving.',
+      );
+      return;
+    }
 
     setIsSaving(true);
     try {
       await onSubmit({
         amount: parsedAmount,
         categoryId: selectedCategory,
+        accountId: selectedAccount,
         note: note.trim() ? note.trim() : null,
       });
       setAmount('');
       setNote('');
       setSelectedCategory(null);
+      setSelectedAccount(null);
     } catch (error) {
       Alert.alert('Error', error instanceof Error ? error.message : t('errors.generic'));
     } finally {
@@ -117,61 +145,52 @@ export function TransactionForm({ kind, onSubmit, submitLabel }: TransactionForm
         />
       </View>
 
-      {/* Category label */}
-      <View>
-        <Text style={{ marginBottom: 4, fontSize: 13, color: theme.colors.onSurfaceVariant }}>
-          {locale === 'ar'
-            ? `فئة ${isIncome ? 'الدخل' : 'المصروف'} (مطلوب)`
-            : `${isIncome ? 'Income' : 'Expense'} category (required)`}
-        </Text>
-        <Text style={{ marginBottom: 8, fontSize: 12, color: theme.colors.outline }}>
-          {locale === 'ar'
-            ? 'اختر الفئة الصحيحة لضمان تقارير دقيقة.'
-            : 'Select the right category for accurate reports.'}
-        </Text>
-      </View>
+      <ComboSelect
+        label={locale === 'ar' ? 'الحساب (مطلوب)' : 'Account (required)'}
+        placeholder={locale === 'ar' ? 'اختر الحساب' : 'Pick account'}
+        value={selectedAccount}
+        options={accounts.map((account) => {
+          const group = ACCOUNT_GROUP_MAP.get(account.groupKey);
+          const groupLabel = locale === 'ar' ? group?.labelAr : group?.labelEn;
+          return {
+            value: account.id,
+            label: groupLabel ? `${groupLabel} • ${account.name}` : account.name,
+          };
+        })}
+        onChange={(value) => setSelectedAccount(value)}
+      />
 
-      {/* Category Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -8 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={() => router.push({ pathname: '/categories/manage', params: { tab: kind } })}
-            style={{
-              borderRadius: 100,
-              borderWidth: 1,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderColor: theme.colors.outlineVariant,
-              backgroundColor: theme.colors.surfaceVariant,
-            }}
-          >
-            <Text style={{ color: theme.colors.onSurfaceVariant }}>
-              {locale === 'ar' ? '+ إضافة فئة' : '+ Add category'}
-            </Text>
-          </Pressable>
-          {categories.map((category) => {
-            const selected = selectedCategory === category.id;
-            const title = locale === 'ar' ? category.nameAr : category.nameEn;
-            return (
-              <Pressable
-                key={category.id}
-                onPress={() => setSelectedCategory(category.id)}
-                style={{
-                  borderRadius: 100,
-                  borderWidth: 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderColor: selected ? accentColor : theme.colors.outlineVariant,
-                  backgroundColor: selected ? (isIncome ? theme.colors.primaryContainer : theme.colors.errorContainer) : theme.colors.surfaceVariant,
-                }}>
-                <Text style={{ color: selected ? (isIncome ? theme.colors.onPrimaryContainer : theme.colors.onErrorContainer) : theme.colors.onSurfaceVariant }}>
-                  {title}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScrollView>
+      <ComboSelect
+        label={
+          locale === 'ar'
+            ? `فئة ${isIncome ? 'الدخل' : 'المصروف'} (مطلوب)`
+            : `${isIncome ? 'Income' : 'Expense'} category (required)`
+        }
+        placeholder={locale === 'ar' ? 'اختر الفئة' : 'Pick category'}
+        value={selectedCategory}
+        options={categories.map((category) => ({
+          value: category.id,
+          label: locale === 'ar' ? category.nameAr : category.nameEn,
+        }))}
+        onChange={(value) => setSelectedCategory(value)}
+      />
+
+      <Pressable
+        onPress={() => router.push({ pathname: '/categories/manage', params: { tab: kind } })}
+        style={{
+          alignSelf: 'flex-start',
+          borderRadius: 12,
+          borderWidth: 1,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderColor: theme.colors.outlineVariant,
+          backgroundColor: theme.colors.surfaceVariant,
+        }}
+      >
+        <Text style={{ color: theme.colors.onSurfaceVariant }}>
+          {locale === 'ar' ? '+ إضافة فئة' : '+ Add category'}
+        </Text>
+      </Pressable>
 
       {/* Quick Summary */}
       <View style={{

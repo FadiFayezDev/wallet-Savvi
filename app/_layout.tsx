@@ -586,9 +586,12 @@ export default function RootLayout() {
             >
               <Stack screenOptions={{ headerShown: false, }}>
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="transactions/add" />
                 <Stack.Screen name="transactions/add-expense" />
                 <Stack.Screen name="transactions/add-income" />
                 <Stack.Screen name="categories/manage" />
+                <Stack.Screen name="accounts/create" />
+                <Stack.Screen name="accounts/[id]" />
                 <Stack.Screen name="themes/index" />
                 <Stack.Screen name="themes/palette" />
                 <Stack.Screen name="bills/index" />

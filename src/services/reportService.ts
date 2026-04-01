@@ -12,20 +12,20 @@ export const reportService = {
           SUM(CASE WHEN kind IN ('expense', 'bill_payment', 'work_expense') THEN amount_abs ELSE 0 END) as expense,
           SUM(CASE WHEN kind = 'goal_transfer' THEN amount_abs ELSE 0 END) as goals
          FROM transactions 
-         WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0`,
+         WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0 AND source != 'transfer'`,
         [monthKey], db
       );
 
       const topExpense = await getFirst<{ category_id: number }>(
         `SELECT category_id FROM transactions 
-         WHERE strftime('%Y-%m', occurred_at) = ? AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0
+         WHERE strftime('%Y-%m', occurred_at) = ? AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0 AND source != 'transfer'
          GROUP BY category_id ORDER BY SUM(amount_abs) DESC LIMIT 1`,
         [monthKey], db
       );
 
       const topIncome = await getFirst<{ category_id: number }>(
         `SELECT category_id FROM transactions 
-         WHERE strftime('%Y-%m', occurred_at) = ? AND kind = 'income' AND is_deleted = 0
+         WHERE strftime('%Y-%m', occurred_at) = ? AND kind = 'income' AND is_deleted = 0 AND source != 'transfer'
          GROUP BY category_id ORDER BY SUM(amount_abs) DESC LIMIT 1`,
         [monthKey], db
       );
@@ -52,14 +52,14 @@ export const reportService = {
 
       const openingRow = await getFirst<{ balance_after: number }>(
         `SELECT balance_after FROM transactions 
-         WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0 
+       WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0 AND source != 'transfer'
          ORDER BY occurred_at ASC, id ASC LIMIT 1`,
         [monthKey], db
       );
 
       const closingRow = await getFirst<{ balance_after: number }>(
         `SELECT balance_after FROM transactions 
-         WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0 
+       WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0 AND source != 'transfer'
          ORDER BY occurred_at DESC, id DESC LIMIT 1`,
         [monthKey], db
       );
@@ -97,10 +97,10 @@ export const reportService = {
       await runQuery(
         `INSERT INTO report_category_breakdown (report_id, category_id, total_amount, percentage)
          SELECT ?, category_id, SUM(amount_abs), (SUM(amount_abs) * 100.0 / ?)
-         FROM transactions 
-         WHERE strftime('%Y-%m', occurred_at) = ? 
-         AND kind IN ('expense', 'bill_payment', 'work_expense') 
-         AND is_deleted = 0
+       FROM transactions 
+       WHERE strftime('%Y-%m', occurred_at) = ? 
+       AND kind IN ('expense', 'bill_payment', 'work_expense') 
+       AND is_deleted = 0 AND source != 'transfer'
          GROUP BY category_id`,
         [reportId, totalExp, monthKey], db
       );
@@ -135,14 +135,14 @@ export const reportService = {
         SUM(CASE WHEN kind IN ('expense', 'bill_payment', 'work_expense') THEN amount_abs ELSE 0 END) as expense,
         SUM(CASE WHEN kind = 'goal_transfer' THEN amount_abs ELSE 0 END) as goals
        FROM transactions 
-       WHERE date(occurred_at) BETWEEN date(?) AND date(?) AND is_deleted = 0`,
+       WHERE date(occurred_at) BETWEEN date(?) AND date(?) AND is_deleted = 0 AND source != 'transfer'`,
       [monthStart, monthEnd]
     );
 
     const topExpense = await getFirst<{ category_id: number }>(
       `SELECT category_id FROM transactions 
        WHERE date(occurred_at) BETWEEN date(?) AND date(?) 
-       AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0
+       AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0 AND source != 'transfer'
        GROUP BY category_id ORDER BY SUM(amount_abs) DESC LIMIT 1`,
       [monthStart, monthEnd]
     );
@@ -150,7 +150,7 @@ export const reportService = {
     const topIncome = await getFirst<{ category_id: number }>(
       `SELECT category_id FROM transactions 
        WHERE date(occurred_at) BETWEEN date(?) AND date(?) 
-       AND kind = 'income' AND is_deleted = 0
+       AND kind = 'income' AND is_deleted = 0 AND source != 'transfer'
        GROUP BY category_id ORDER BY SUM(amount_abs) DESC LIMIT 1`,
       [monthStart, monthEnd]
     );
@@ -159,7 +159,7 @@ export const reportService = {
       `SELECT date(occurred_at) as day_key
        FROM transactions
        WHERE date(occurred_at) BETWEEN date(?) AND date(?) 
-       AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0
+       AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0 AND source != 'transfer'
        GROUP BY date(occurred_at)
        ORDER BY SUM(amount_abs) DESC LIMIT 1`,
       [monthStart, monthEnd]
@@ -179,14 +179,14 @@ export const reportService = {
 
     const openingRow = await getFirst<{ balance_after: number }>(
       `SELECT balance_after FROM transactions 
-       WHERE date(occurred_at) BETWEEN date(?) AND date(?) AND is_deleted = 0 
+       WHERE date(occurred_at) BETWEEN date(?) AND date(?) AND is_deleted = 0 AND source != 'transfer'
        ORDER BY occurred_at ASC, id ASC LIMIT 1`,
       [monthStart, monthEnd]
     );
 
     const closingRow = await getFirst<{ balance_after: number }>(
       `SELECT balance_after FROM transactions 
-       WHERE date(occurred_at) BETWEEN date(?) AND date(?) AND is_deleted = 0 
+       WHERE date(occurred_at) BETWEEN date(?) AND date(?) AND is_deleted = 0 AND source != 'transfer'
        ORDER BY occurred_at DESC, id DESC LIMIT 1`,
       [monthStart, monthEnd]
     );
@@ -260,13 +260,13 @@ export const reportService = {
         SUM(CASE WHEN kind = 'income' THEN amount_abs ELSE 0 END) as income,
         SUM(CASE WHEN kind IN ('expense', 'bill_payment', 'work_expense') THEN amount_abs ELSE 0 END) as expense
        FROM transactions 
-       WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0`,
+       WHERE strftime('%Y-%m', occurred_at) = ? AND is_deleted = 0 AND source != 'transfer'`,
       [monthKey]
     );
 
     const todayRow = await getFirst<{ spent: number }>(
       `SELECT SUM(amount_abs) as spent FROM transactions 
-       WHERE date(occurred_at) = ? AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0`,
+       WHERE date(occurred_at) = ? AND kind IN ('expense', 'bill_payment', 'work_expense') AND is_deleted = 0 AND source != 'transfer'`,
       [today]
     );
 
@@ -291,7 +291,7 @@ export const reportService = {
         SUM(CASE WHEN kind = 'income' THEN amount_abs ELSE 0 END) as income,
         SUM(CASE WHEN kind IN ('expense', 'bill_payment', 'work_expense') THEN amount_abs ELSE 0 END) as expense
        FROM transactions 
-       WHERE occurred_at >= date('now', '-14 days') AND is_deleted = 0
+       WHERE occurred_at >= date('now', '-14 days') AND is_deleted = 0 AND source != 'transfer'
        GROUP BY date(occurred_at)
        ORDER BY date ASC`
     );

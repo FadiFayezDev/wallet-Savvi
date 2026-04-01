@@ -12,6 +12,7 @@
     "dashboard": "الرئيسية",
     "goals": "التحويش",
     "months": "الشهور",
+    "tools": "الأدوات",
     "settings": "الإعدادات"
   },
   "dashboard": {
@@ -57,6 +58,33 @@
     "topIncomeCategory": "أعلى فئة دخل",
     "topExpenseCategory": "أعلى فئة صرف",
     "highestSpendDay": "أكثر يوم صرف"
+  },
+  "tools": {
+    "title": "الأدوات",
+    "budget": "الميزانية",
+    "account": "الحسابات",
+    "history": "التاريخ",
+    "all": "الكل",
+    "month": "الشهر",
+    "assets": "الأصول",
+    "liabilities": "الالتزامات",
+    "total": "الإجمالي",
+    "addAccount": "إضافة حساب جديد",
+    "createAccount": "إنشاء حساب",
+    "updateAccount": "تعديل حساب",
+    "deleteAccount": "حذف حساب",
+    "deleteAccountConfirm": "سيتم حذف الحساب إذا لم يكن لديه معاملات.",
+    "delete": "حذف",
+    "editMode": "وضع التعديل مفعل",
+    "deleteMode": "وضع الحذف مفعل",
+    "done": "تم",
+    "selectGroup": "اختر مجموعة الحساب",
+    "group": "المجموعة",
+    "name": "اسم الحساب",
+    "amount": "المبلغ",
+    "description": "الوصف",
+    "notes": "ملاحظات",
+    "save": "حفظ"
   },
   "settings": {
     "title": "الإعدادات",
