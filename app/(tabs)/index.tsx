@@ -1,39 +1,44 @@
 "use client";
 
-import { useIsFocused } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  Animated,
-  Pressable,
-  Text,
-  View,
-  StyleSheet,
-} from "react-native";
-import { FAB, IconButton, Portal, Surface, useTheme } from "react-native-paper";
+  Chip,
+  FAB,
+  IconButton,
+  List,
+  Portal,
+  Surface,
+  useTheme,
+} from "react-native-paper";
+import type { MD3Colors, MD3Theme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import InfiniteDayPicker from "@/src/components/FlatList/InfiniteDayPicker";
 import { AnimatedBalanceText } from "@/src/components/common/AnimatedBalanceText";
+import { accountService } from "@/src/services/accountService";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { transactionService } from "@/src/services/transactionService";
-import { accountService } from "@/src/services/accountService";
 import { workService } from "@/src/services/workService";
 import { useDashboardStore } from "@/src/stores/dashboardStore";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import type { Account, Transaction, WorkDayLog } from "@/src/types/domain";
+import { withAlpha } from "@/src/utils/colors";
 import { toMonthKey } from "@/src/utils/date";
 import { formatMoney } from "@/src/utils/money";
-import { withAlpha } from "@/src/utils/colors";
 import dayjs from "dayjs";
 
 // ── أيقونة + لون لكل نوع معاملة ──────────────────────────────
 
 // ── هوك لـ staggered animation ─────────────────────────────────
 function useStaggeredAnim(count: number, trigger: unknown) {
-  const anims = useRef(Array.from({ length: count }, () => new Animated.Value(0))).current;
+  const anims = useRef(
+    Array.from({ length: count }, () => new Animated.Value(0)),
+  ).current;
   useEffect(() => {
     anims.forEach((a) => a.setValue(0));
     const animations = anims.map((a, i) =>
@@ -42,7 +47,7 @@ function useStaggeredAnim(count: number, trigger: unknown) {
         duration: 380,
         delay: i * 70,
         useNativeDriver: true,
-      })
+      }),
     );
     Animated.stagger(60, animations).start();
   }, [trigger]);
@@ -66,8 +71,31 @@ export default function DashboardScreen() {
   const [fabVisible, setFabVisible] = useState(true);
 
   const isFocused = useIsFocused();
-  const router    = useRouter();
-  const theme     = useTheme();
+  const router = useRouter();
+  type ExtraColors = {
+    success?: string;
+    onSuccess?: string;
+    successContainer?: string;
+    onSuccessContainer?: string;
+    warning?: string;
+    onWarning?: string;
+    warningContainer?: string;
+    onWarningContainer?: string;
+    info?: string;
+    onInfo?: string;
+    infoContainer?: string;
+    onInfoContainer?: string;
+    headerGradientStart?: string;
+    headerGradientMid?: string;
+    headerGradientEnd?: string;
+    headerText?: string;
+    headerIcon?: string;
+    iconPrimary?: string;
+    iconSecondary?: string;
+    iconMuted?: string;
+  };
+  type AppTheme = MD3Theme & { colors: MD3Colors & ExtraColors };
+  const theme = useTheme<AppTheme>();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const headerHeight = useRef(new Animated.Value(310)).current;
@@ -76,11 +104,11 @@ export default function DashboardScreen() {
   const isCollapsedRef = useRef(false);
   const fabVisibleRef = useRef(true);
 
-  const settings      = useSettingsStore((s) => s.settings);
-  const summary       = useDashboardStore((s) => s.summary);
-  const refresh       = useDashboardStore((s) => s.refresh);
+  const settings = useSettingsStore((s) => s.settings);
+  const summary = useDashboardStore((s) => s.summary);
+  const refresh = useDashboardStore((s) => s.refresh);
 
-  const locale   = settings?.locale      ?? "ar";
+  const locale = settings?.locale ?? "ar";
   const currency = settings?.currencyCode ?? "EGP";
   const isArabic = locale === "ar";
 
@@ -99,24 +127,51 @@ export default function DashboardScreen() {
     const warning = theme.colors.warning ?? theme.colors.tertiary;
     const info = theme.colors.info ?? theme.colors.primary;
     return {
-      income:        { icon: "arrow-down-circle",    color: success, bg: withAlpha(success, 0.12) },
-      expense:       { icon: "arrow-up-circle",      color: theme.colors.error, bg: withAlpha(theme.colors.error, 0.12) },
-      bill_payment:  { icon: "receipt-text-outline", color: warning, bg: withAlpha(warning, 0.12) },
-      work_expense:  { icon: "briefcase-outline",    color: info, bg: withAlpha(info, 0.12) },
-      goal_transfer: { icon: "flag-outline",         color: theme.colors.secondary, bg: withAlpha(theme.colors.secondary, 0.12) },
-      goal_refund:   { icon: "flag-remove-outline",  color: success, bg: withAlpha(success, 0.12) },
-    } as const satisfies Record<string, { icon: string; color: string; bg: string }>;
+      income: {
+        icon: "arrow-down-circle",
+        color: success,
+        bg: withAlpha(success, 0.12),
+      },
+      expense: {
+        icon: "arrow-up-circle",
+        color: theme.colors.error,
+        bg: withAlpha(theme.colors.error, 0.12),
+      },
+      bill_payment: {
+        icon: "receipt-text-outline",
+        color: warning,
+        bg: withAlpha(warning, 0.12),
+      },
+      work_expense: {
+        icon: "briefcase-outline",
+        color: info,
+        bg: withAlpha(info, 0.12),
+      },
+      goal_transfer: {
+        icon: "flag-outline",
+        color: theme.colors.secondary,
+        bg: withAlpha(theme.colors.secondary, 0.12),
+      },
+      goal_refund: {
+        icon: "flag-remove-outline",
+        color: success,
+        bg: withAlpha(success, 0.12),
+      },
+    } as const satisfies Record<
+      string,
+      { icon: string; color: string; bg: string }
+    >;
   }, [theme.colors]);
 
   // ── Animated values ────────────────────────────────────────
-  const headerAnim  = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim    = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const limitBarAnim = useRef(new Animated.Value(0)).current;
 
   // staggered cards: breakdown, bills, worklog
   const cardAnims = useRef(
-    Array.from({ length: 3 }, () => new Animated.Value(0))
+    Array.from({ length: 3 }, () => new Animated.Value(0)),
   ).current;
 
   // ── مشتقات الحسابات ────────────────────────────────────────
@@ -127,25 +182,48 @@ export default function DashboardScreen() {
   }, [dayPaidBillTotal, isArabic]);
 
   const dayBreakdown = useMemo(() => {
-    let income = 0, expense = 0, billPayments = 0,
-        work = 0, goalTransfer = 0, goalRefund = 0;
+    let income = 0,
+      expense = 0,
+      billPayments = 0,
+      work = 0,
+      goalTransfer = 0,
+      goalRefund = 0;
     for (const item of dayTransactions) {
       if (item.source === "transfer") continue;
       switch (item.kind) {
-        case "income":        income       += item.amountAbs; break;
-        case "expense":       expense      += item.amountAbs; break;
-        case "bill_payment":  billPayments += item.amountAbs; break;
-        case "work_expense":  work         += item.amountAbs; break;
-        case "goal_transfer": goalTransfer += item.amountAbs; break;
-        case "goal_refund":   goalRefund   += item.amountAbs; break;
+        case "income":
+          income += item.amountAbs;
+          break;
+        case "expense":
+          expense += item.amountAbs;
+          break;
+        case "bill_payment":
+          billPayments += item.amountAbs;
+          break;
+        case "work_expense":
+          work += item.amountAbs;
+          break;
+        case "goal_transfer":
+          goalTransfer += item.amountAbs;
+          break;
+        case "goal_refund":
+          goalRefund += item.amountAbs;
+          break;
       }
     }
-    const bills   = dayPaidBillTotal > 0 ? dayPaidBillTotal : billPayments;
+    const bills = dayPaidBillTotal > 0 ? dayPaidBillTotal : billPayments;
     const outflow = expense + bills + work + goalTransfer;
-    const inflow  = income + goalRefund;
+    const inflow = income + goalRefund;
     return {
-      income, expense, bills, billPayments, work,
-      goalTransfer, goalRefund, inflow, outflow,
+      income,
+      expense,
+      bills,
+      billPayments,
+      work,
+      goalTransfer,
+      goalRefund,
+      inflow,
+      outflow,
       net: inflow - outflow,
       spentForLimit: expense + bills + work,
     };
@@ -154,25 +232,41 @@ export default function DashboardScreen() {
   const limitStatus = useMemo(() => {
     const dailyLimit = settings?.dailyLimit ?? null;
     if (!dailyLimit || dailyLimit <= 0)
-      return { hasLimit: false, remaining: null, isOver: false,
-               progress: 0, spent: 0, limit: 0, overBy: 0 };
-    const spent     = dayBreakdown.spentForLimit;
+      return {
+        hasLimit: false,
+        remaining: null,
+        isOver: false,
+        progress: 0,
+        spent: 0,
+        limit: 0,
+        overBy: 0,
+      };
+    const spent = dayBreakdown.spentForLimit;
     const remaining = Math.max(0, dailyLimit - spent);
-    const isOver    = spent > dailyLimit;
-    return { hasLimit: true, remaining, isOver,
-             progress: Math.min(1, spent / dailyLimit),
-             spent, limit: dailyLimit,
-             overBy: Math.max(0, spent - dailyLimit) };
+    const isOver = spent > dailyLimit;
+    return {
+      hasLimit: true,
+      remaining,
+      isOver,
+      progress: Math.min(1, spent / dailyLimit),
+      spent,
+      limit: dailyLimit,
+      overBy: Math.max(0, spent - dailyLimit),
+    };
   }, [settings?.dailyLimit, dayBreakdown.spentForLimit]);
 
   // ── تحميل البيانات ─────────────────────────────────────────
-  useFocusEffect(useCallback(() => { refresh().catch(() => {}); }, [refresh]));
+  useFocusEffect(
+    useCallback(() => {
+      refresh().catch(() => {});
+    }, [refresh]),
+  );
 
   const loadDayDetails = useCallback(async (date: Date) => {
     setDayLoading(true);
     try {
       const monthKey = toMonthKey(date);
-      const dayKey   = dayjs(date).format("YYYY-MM-DD");
+      const dayKey = dayjs(date).format("YYYY-MM-DD");
       const [transactions, pendingBills, billInstances, paidBillRows, workLog] =
         await Promise.all([
           transactionService.listTransactionsByDay(dayKey, 200),
@@ -182,10 +276,13 @@ export default function DashboardScreen() {
           workService.getWorkLogByDate(dayKey),
         ]);
       const dueBills = pendingBills.filter(
-        (b) => recurringBillService.getDueDateForMonth(monthKey, b.due_day) === dayKey,
+        (b) =>
+          recurringBillService.getDueDateForMonth(monthKey, b.due_day) ===
+          dayKey,
       );
       const paidTotal = paidBillRows.reduce(
-        (sum: number, row: any) => sum + (row.bill_amount ?? 0), 0,
+        (sum: number, row: any) => sum + (row.bill_amount ?? 0),
+        0,
       );
       setDayTransactions(transactions);
       setDayBillsDue(dueBills);
@@ -193,8 +290,11 @@ export default function DashboardScreen() {
       setDayPaidBillTotal(paidTotal);
       setDayWorkLog(workLog);
     } catch {
-      setDayTransactions([]); setDayBillsDue([]);
-      setDayBillInstances([]); setDayPaidBillTotal(0); setDayWorkLog(null);
+      setDayTransactions([]);
+      setDayBillsDue([]);
+      setDayBillInstances([]);
+      setDayPaidBillTotal(0);
+      setDayWorkLog(null);
     } finally {
       setDayLoading(false);
     }
@@ -221,8 +321,18 @@ export default function DashboardScreen() {
   // أنيميشن الهيدر عند mount
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(headerAnim, { toValue: 1, tension: 60, friction: 10, useNativeDriver: true }),
-      Animated.timing(balanceAnim, { toValue: 1, duration: 600, delay: 200, useNativeDriver: true }),
+      Animated.spring(headerAnim, {
+        toValue: 1,
+        tension: 60,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(balanceAnim, {
+        toValue: 1,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
@@ -230,12 +340,21 @@ export default function DashboardScreen() {
   useEffect(() => {
     fadeAnim.setValue(0);
     cardAnims.forEach((a) => a.setValue(0));
-    Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
     Animated.stagger(
       80,
       cardAnims.map((a) =>
-        Animated.spring(a, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true })
-      )
+        Animated.spring(a, {
+          toValue: 1,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ),
     ).start();
   }, [selectedDate]);
 
@@ -247,188 +366,384 @@ export default function DashboardScreen() {
       toValue: limitStatus.progress,
       duration: 900,
       delay: 400,
-      useNativeDriver: false,  // نحتاج width
+      useNativeDriver: false, // نحتاج width
     }).start();
   }, [limitStatus.progress, limitStatus.hasLimit]);
 
   // ── مساعد لـ card anim ─────────────────────────────────────
   const cardStyle = (anim: Animated.Value) => ({
     opacity: anim,
-    transform: [{
-      translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }),
-    }],
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [20, 0],
+        }),
+      },
+    ],
   });
 
   const collapseHeader = useCallback(() => {
     Animated.parallel([
-      Animated.spring(headerHeight, { toValue: 140, useNativeDriver: false, tension: 120, friction: 14 }),
-      Animated.timing(detailsOpacity, { toValue: 0, duration: 180, useNativeDriver: false }),
-      Animated.timing(detailsTranslate, { toValue: -12, duration: 180, useNativeDriver: false }),
+      Animated.spring(headerHeight, {
+        toValue: 140,
+        useNativeDriver: false,
+        tension: 120,
+        friction: 14,
+      }),
+      Animated.timing(detailsOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: false,
+      }),
+      Animated.timing(detailsTranslate, {
+        toValue: -12,
+        duration: 180,
+        useNativeDriver: false,
+      }),
     ]).start();
   }, [headerHeight, detailsOpacity, detailsTranslate]);
 
   const expandHeader = useCallback(() => {
     Animated.parallel([
-      Animated.spring(headerHeight, { toValue: 310, useNativeDriver: false, tension: 110, friction: 12 }),
-      Animated.timing(detailsOpacity, { toValue: 1, duration: 220, useNativeDriver: false }),
-      Animated.timing(detailsTranslate, { toValue: 0, duration: 220, useNativeDriver: false }),
+      Animated.spring(headerHeight, {
+        toValue: 310,
+        useNativeDriver: false,
+        tension: 110,
+        friction: 12,
+      }),
+      Animated.timing(detailsOpacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: false,
+      }),
+      Animated.timing(detailsTranslate, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: false,
+      }),
     ]).start();
   }, [headerHeight, detailsOpacity, detailsTranslate]);
 
   // ── Chips للـ breakdown ────────────────────────────────────
   const breakdownChips = [
-    { label: billsLabel,                                     value: dayBreakdown.bills },
-    { label: isArabic ? "شغل" : "Work",                     value: dayBreakdown.work },
-    { label: isArabic ? "تحويلات أهداف" : "Goal transfers", value: dayBreakdown.goalTransfer },
-    { label: isArabic ? "مرتجعات أهداف" : "Goal refunds",   value: dayBreakdown.goalRefund },
+    { label: billsLabel, value: dayBreakdown.bills },
+    { label: isArabic ? "شغل" : "Work", value: dayBreakdown.work },
+    {
+      label: isArabic ? "تحويلات أهداف" : "Goal transfers",
+      value: dayBreakdown.goalTransfer,
+    },
+    {
+      label: isArabic ? "مرتجعات أهداف" : "Goal refunds",
+      value: dayBreakdown.goalRefund,
+    },
   ];
 
   // ══════════════════════════════════════════════════════════
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-
       {/* ── HEADER ── */}
-      <Animated.View style={{
-        opacity: headerAnim,
-        transform: [{ translateY: headerAnim.interpolate({ inputRange:[0,1], outputRange:[-30,0] }) }],
-      }}>
-        <Animated.View style={[styles.headerWrap, { height: headerHeight, backgroundColor: headerStart }]}>
+      <Animated.View
+        style={{
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-30, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.headerWrap,
+            { height: headerHeight, backgroundColor: headerStart },
+          ]}
+        >
           <LinearGradient
             colors={[headerStart, headerMid, headerEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.header, { paddingTop: 12, flex: 1, shadowColor: headerStart }]}
+            style={[
+              styles.header,
+              { paddingTop: 12, flex: 1, shadowColor: headerStart },
+            ]}
           >
-          {/* شريط التحكم */}
-          <View style={styles.headerBar}>
-            <View style={styles.headerActions}>
-              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => {}}>
-                <IconButton icon="menu" iconColor={headerIcon} size={20} style={styles.noMargin} />
-              </Pressable>
-              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => router.push("/reports/current")}>
-                <IconButton icon="chart-box-outline" iconColor={headerIcon} size={20} style={styles.noMargin} />
-              </Pressable>
+            {/* شريط التحكم */}
+            <View style={styles.headerBar}>
+              <View style={styles.headerActions}>
+                <IconButton
+                  icon="menu"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => {}}
+                />
+                <IconButton
+                  icon="chart-box-outline"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/reports/current")}
+                />
+              </View>
+
+              <Text style={[styles.balanceLabel, { color: headerTextMuted }]}>
+                {isArabic ? "إجمالي الرصيد" : "Total Balance"}
+              </Text>
+
+              <View style={styles.headerActions}>
+                <IconButton
+                  icon="receipt-text-outline"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/bills")}
+                />
+                <IconButton
+                  icon="briefcase-outline"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/work")}
+                />
+              </View>
             </View>
 
-            <Text style={[styles.balanceLabel, { color: headerTextMuted }]}>
-              {isArabic ? "إجمالي الرصيد" : "Total Balance"}
-            </Text>
-
-            <View style={styles.headerActions}>
-              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => router.push("/bills")}>
-                <IconButton icon="receipt-text-outline" iconColor={headerIcon} size={20} style={styles.noMargin} />
-              </Pressable>
-              <Pressable style={[styles.iconBtn, { backgroundColor: headerGlass }]} onPress={() => router.push("/work")}>
-                <IconButton icon="briefcase-outline" iconColor={headerIcon} size={20} style={styles.noMargin} />
-              </Pressable>
-            </View>
-          </View>
-
-          {/* الرصيد */}
-          <Animated.View style={{
-            opacity: balanceAnim,
-            transform: [{ scale: balanceAnim.interpolate({ inputRange:[0,1], outputRange:[0.85,1] }) }],
-          }}>
-            <AnimatedBalanceText
-              value={summary?.balance ?? 0}
-              locale={locale}
-              currency={currency}
-              resetKey={focusTick}
-              textStyle={[styles.balanceValue, { color: headerText, textShadowColor: withAlpha(headerText, 0.35) }]}
-            />
-          </Animated.View>
-
-          <Animated.View style={{ opacity: detailsOpacity, transform: [{ translateY: detailsTranslate }] }}>
-            {/* Limit Bar */}
-            {limitStatus.hasLimit && (
-              <View style={styles.limitWrap}>
-                <View style={styles.limitRow}>
-                  <Text style={[styles.limitText, { color: headerTextStrong }]}>
-                    {limitStatus.isOver
-                      ? (isArabic
-                          ? `⚠ تجاوزت الحد بـ ${formatMoney(limitStatus.overBy, locale, currency)}`
-                          : `⚠ Over limit by ${formatMoney(limitStatus.overBy, locale, currency)}`)
-                      : (isArabic
-                          ? `متبقي ${formatMoney(limitStatus.remaining ?? 0, locale, currency)}`
-                          : `${formatMoney(limitStatus.remaining ?? 0, locale, currency)} left`)}
-                  </Text>
-                  <Text style={[styles.limitSubText, { color: headerTextMuted }]}>
-                    {formatMoney(limitStatus.spent, locale, currency)} / {formatMoney(limitStatus.limit, locale, currency)}
-                  </Text>
-                </View>
-                <View style={[styles.limitTrack, { backgroundColor: headerBorder }]}>
-                  <Animated.View style={[styles.limitFill, {
-                    width: limitBarAnim.interpolate({
+            {/* الرصيد */}
+            <Animated.View
+              style={{
+                opacity: balanceAnim,
+                transform: [
+                  {
+                    scale: balanceAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: ["0%", "100%"],
+                      outputRange: [0.85, 1],
                     }),
-                  }]}>
-                    <LinearGradient
-                      colors={limitStatus.isOver
-                        ? [theme.colors.error, theme.colors.errorContainer ?? theme.colors.error]
-                        : [theme.colors.success ?? theme.colors.secondary, theme.colors.successContainer ?? theme.colors.secondaryContainer]}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  </Animated.View>
-                </View>
-              </View>
-            )}
-
-            {/* Day Picker */}
-            <InfiniteDayPicker
-              isArabic={isArabic}
-              theme={theme}
-              initialDate={selectedDate}
-              onDayChange={(date) => {
-                const d = new Date(date);
-                d.setHours(0, 0, 0, 0);
-                setSelectedDate(d);
+                  },
+                ],
               }}
-            />
+            >
+              <AnimatedBalanceText
+                value={summary?.balance ?? 0}
+                locale={locale}
+                currency={currency}
+                resetKey={focusTick}
+                textStyle={[
+                  styles.balanceValue,
+                  {
+                    color: headerText,
+                    textShadowColor: withAlpha(headerText, 0.35),
+                  },
+                ]}
+              />
+            </Animated.View>
 
-            {/* كروت الدخل / المصروفات */}
-            <View style={styles.summaryRow}>
-              {/* المصروفات */}
-              <View style={[styles.summaryCard, { borderColor: headerBorder }]}>
-                <LinearGradient
-                  colors={[withAlpha(theme.colors.error, 0.15), withAlpha(theme.colors.error, 0.05)]}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View style={[styles.summaryIcon, { backgroundColor: withAlpha(theme.colors.error, 0.2) }]}>
-                  <IconButton icon="trending-down" iconColor={theme.colors.error} size={18} style={styles.noMargin} />
+            <Animated.View
+              style={{
+                opacity: detailsOpacity,
+                transform: [{ translateY: detailsTranslate }],
+              }}
+            >
+              {/* Limit Bar */}
+              {limitStatus.hasLimit && (
+                <View style={styles.limitWrap}>
+                  <View style={styles.limitRow}>
+                    <Text
+                      style={[styles.limitText, { color: headerTextStrong }]}
+                    >
+                      {limitStatus.isOver
+                        ? isArabic
+                          ? `⚠ تجاوزت الحد بـ ${formatMoney(limitStatus.overBy, locale, currency)}`
+                          : `⚠ Over limit by ${formatMoney(limitStatus.overBy, locale, currency)}`
+                        : isArabic
+                          ? `متبقي ${formatMoney(limitStatus.remaining ?? 0, locale, currency)}`
+                          : `${formatMoney(limitStatus.remaining ?? 0, locale, currency)} left`}
+                    </Text>
+                    <Text
+                      style={[styles.limitSubText, { color: headerTextMuted }]}
+                    >
+                      {formatMoney(limitStatus.spent, locale, currency)} /{" "}
+                      {formatMoney(limitStatus.limit, locale, currency)}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.limitTrack,
+                      { backgroundColor: headerBorder },
+                    ]}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.limitFill,
+                        {
+                          width: limitBarAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ["0%", "100%"],
+                          }),
+                        },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={
+                          limitStatus.isOver
+                            ? [
+                                theme.colors.error,
+                                theme.colors.errorContainer ??
+                                  theme.colors.error,
+                              ]
+                            : [
+                                theme.colors.success ?? theme.colors.secondary,
+                                theme.colors.successContainer ??
+                                  theme.colors.secondaryContainer,
+                              ]
+                        }
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    </Animated.View>
+                  </View>
                 </View>
-                <View>
-                  <Text style={[styles.summaryCardLabel, { color: headerTextMuted }]}>
-                    {isArabic ? "المصروفات" : "Expenses"}
-                  </Text>
-                  <Text style={[styles.summaryCardValue, { color: theme.colors.error }]} numberOfLines={1}>
-                    {formatMoney(summary?.monthlyExpense ?? 0, locale, currency)}
-                  </Text>
+              )}
+
+              {/* Day Picker */}
+              <InfiniteDayPicker
+                isArabic={isArabic}
+                theme={theme}
+                initialDate={selectedDate}
+                onDayChange={(date) => {
+                  const d = new Date(date);
+                  d.setHours(0, 0, 0, 0);
+                  setSelectedDate(d);
+                }}
+              />
+
+              {/* كروت الدخل / المصروفات */}
+              <View style={styles.summaryRow}>
+                {/* المصروفات */}
+                <View
+                  style={[styles.summaryCard, { borderColor: headerBorder }]}
+                >
+                  <LinearGradient
+                    colors={[
+                      withAlpha(theme.colors.error, 0.15),
+                      withAlpha(theme.colors.error, 0.05),
+                    ]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View
+                    style={[
+                      styles.summaryIcon,
+                      { backgroundColor: withAlpha(theme.colors.error, 0.2) },
+                    ]}
+                  >
+                    <IconButton
+                      icon="trending-down"
+                      iconColor={theme.colors.error}
+                      size={18}
+                      style={styles.noMargin}
+                    />
+                  </View>
+                  <View>
+                    <Text
+                      style={[
+                        styles.summaryCardLabel,
+                        { color: headerTextMuted },
+                      ]}
+                    >
+                      {isArabic ? "المصروفات" : "Expenses"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.summaryCardValue,
+                        { color: theme.colors.error },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMoney(
+                        summary?.monthlyExpense ?? 0,
+                        locale,
+                        currency,
+                      )}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* الدخل */}
+                <View
+                  style={[styles.summaryCard, { borderColor: headerBorder }]}
+                >
+                  <LinearGradient
+                    colors={[
+                      withAlpha(
+                        theme.colors.success ?? theme.colors.secondary,
+                        0.15,
+                      ),
+                      withAlpha(
+                        theme.colors.success ?? theme.colors.secondary,
+                        0.05,
+                      ),
+                    ]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View
+                    style={[
+                      styles.summaryIcon,
+                      {
+                        backgroundColor: withAlpha(
+                          theme.colors.success ?? theme.colors.secondary,
+                          0.2,
+                        ),
+                      },
+                    ]}
+                  >
+                    <IconButton
+                      icon="trending-up"
+                      iconColor={theme.colors.success ?? theme.colors.secondary}
+                      size={18}
+                      style={styles.noMargin}
+                    />
+                  </View>
+                  <View>
+                    <Text
+                      style={[
+                        styles.summaryCardLabel,
+                        { color: headerTextMuted },
+                      ]}
+                    >
+                      {isArabic ? "الدخل" : "Income"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.summaryCardValue,
+                        {
+                          color: theme.colors.success ?? theme.colors.secondary,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMoney(
+                        summary?.monthlyIncome ?? 0,
+                        locale,
+                        currency,
+                      )}
+                    </Text>
+                  </View>
                 </View>
               </View>
-
-              {/* الدخل */}
-              <View style={[styles.summaryCard, { borderColor: headerBorder }]}>
-                <LinearGradient
-                  colors={[withAlpha(theme.colors.success ?? theme.colors.secondary, 0.15), withAlpha(theme.colors.success ?? theme.colors.secondary, 0.05)]}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View style={[styles.summaryIcon, { backgroundColor: withAlpha(theme.colors.success ?? theme.colors.secondary, 0.2) }]}>
-                  <IconButton icon="trending-up" iconColor={theme.colors.success ?? theme.colors.secondary} size={18} style={styles.noMargin} />
-                </View>
-                <View>
-                  <Text style={[styles.summaryCardLabel, { color: headerTextMuted }]}>
-                    {isArabic ? "الدخل" : "Income"}
-                  </Text>
-                  <Text style={[styles.summaryCardValue, { color: theme.colors.success ?? theme.colors.secondary }]} numberOfLines={1}>
-                    {formatMoney(summary?.monthlyIncome ?? 0, locale, currency)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-        </LinearGradient>
+            </Animated.View>
+          </LinearGradient>
         </Animated.View>
       </Animated.View>
 
@@ -457,17 +772,31 @@ export default function DashboardScreen() {
         }}
         scrollEventThrottle={16}
       >
-
         {/* ── Daily Breakdown Card ── */}
         <Animated.View style={cardStyle(cardAnims[0])}>
-          <Surface elevation={0} style={[styles.card, styles.cardBorder,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
-
+          <Surface
+            elevation={0}
+            style={[
+              styles.card,
+              styles.cardBorder,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}
+          >
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
+              <Text
+                style={[styles.cardTitle, { color: theme.colors.onSurface }]}
+              >
                 {isArabic ? "تفاصيل اليوم" : "Daily Breakdown"}
               </Text>
-              <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
+              <Text
+                style={[
+                  styles.dateText,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
                 {selectedDate.toLocaleDateString(locale)}
               </Text>
             </View>
@@ -481,15 +810,41 @@ export default function DashboardScreen() {
                 {/* الأرقام الكبيرة */}
                 <View style={styles.breakdownRow}>
                   {[
-                    { label: isArabic ? "الدخل" : "Income",   value: dayBreakdown.income,                                          color: theme.colors.success ?? theme.colors.secondary },
-                    { label: isArabic ? "المصروفات" : "Expenses", value: dayBreakdown.expense + dayBreakdown.bills + dayBreakdown.work, color: theme.colors.error },
-                    { label: isArabic ? "الصافي" : "Net",      value: dayBreakdown.net,                                             color: dayBreakdown.net >= 0 ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.error, signed: true },
+                    {
+                      label: isArabic ? "الدخل" : "Income",
+                      value: dayBreakdown.income,
+                      color: theme.colors.success ?? theme.colors.secondary,
+                    },
+                    {
+                      label: isArabic ? "المصروفات" : "Expenses",
+                      value:
+                        dayBreakdown.expense +
+                        dayBreakdown.bills +
+                        dayBreakdown.work,
+                      color: theme.colors.error,
+                    },
+                    {
+                      label: isArabic ? "الصافي" : "Net",
+                      value: dayBreakdown.net,
+                      color:
+                        dayBreakdown.net >= 0
+                          ? (theme.colors.success ?? theme.colors.secondary)
+                          : theme.colors.error,
+                      signed: true,
+                    },
                   ].map((item, idx) => (
                     <View key={idx} style={styles.breakdownItem}>
-                      <Text style={[styles.breakdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                      <Text
+                        style={[
+                          styles.breakdownLabel,
+                          { color: theme.colors.onSurfaceVariant },
+                        ]}
+                      >
                         {item.label}
                       </Text>
-                      <Text style={[styles.breakdownValue, { color: item.color }]}>
+                      <Text
+                        style={[styles.breakdownValue, { color: item.color }]}
+                      >
                         {formatMoney(item.value, locale, currency, item.signed)}
                       </Text>
                     </View>
@@ -499,11 +854,20 @@ export default function DashboardScreen() {
                 {/* Chips */}
                 <View style={styles.chipsRow}>
                   {breakdownChips.map((chip, idx) => (
-                    <View key={idx} style={[styles.chip, { borderColor: theme.colors.outlineVariant }]}>
-                      <Text style={[styles.chipText, { color: theme.colors.onSurfaceVariant }]}>
-                        {chip.label}: {formatMoney(chip.value, locale, currency)}
-                      </Text>
-                    </View>
+                    <Chip
+                      key={idx}
+                      mode="outlined"
+                      style={[
+                        styles.chip,
+                        { borderColor: theme.colors.outlineVariant },
+                      ]}
+                      textStyle={[
+                        styles.chipText,
+                        { color: theme.colors.onSurfaceVariant },
+                      ]}
+                    >
+                      {chip.label}: {formatMoney(chip.value, locale, currency)}
+                    </Chip>
                   ))}
                 </View>
               </>
@@ -513,15 +877,27 @@ export default function DashboardScreen() {
 
         {/* ── Bills Card ── */}
         <Animated.View style={cardStyle(cardAnims[1])}>
-          <Surface elevation={0} style={[styles.card, styles.cardBorder,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
-
+          <Surface
+            elevation={0}
+            style={[
+              styles.card,
+              styles.cardBorder,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}
+          >
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
+              <Text
+                style={[styles.cardTitle, { color: theme.colors.onSurface }]}
+              >
                 {isArabic ? "فواتير اليوم" : "Today Bills"}
               </Text>
               <Pressable onPress={() => router.push("/bills")}>
-                <Text style={[styles.linkText, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.linkText, { color: theme.colors.primary }]}
+                >
                   {isArabic ? "عرض الكل" : "View all"}
                 </Text>
               </Pressable>
@@ -530,37 +906,83 @@ export default function DashboardScreen() {
             {dayBillsDue.length === 0 && dayBillInstances.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <Text style={styles.emptyIcon}>📋</Text>
-                <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                  {isArabic ? "لا توجد فواتير لهذا اليوم" : "No bills for this day"}
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  {isArabic
+                    ? "لا توجد فواتير لهذا اليوم"
+                    : "No bills for this day"}
                 </Text>
               </View>
             ) : (
               <View style={{ gap: 8 }}>
-                {[...dayBillsDue.map(b => ({ key: `due-${b.id}`, name: b.name, sub: `${isArabic?"مستحقة":"Pending"} • ${formatMoney(b.amount,locale,currency)}`, isPending: true })),
-                  ...dayBillInstances.map(i => ({ key: `inst-${i.id}`, name: i.billName||(isArabic?"فاتورة":"Bill"), sub: `${i.status} • ${i.dueDate}${i.billAmount!=null?` • ${formatMoney(i.billAmount,locale,currency)}`:""}`, isPending: false })),
+                {[
+                  ...dayBillsDue.map((b) => ({
+                    key: `due-${b.id}`,
+                    name: b.name,
+                    sub: `${isArabic ? "مستحقة" : "Pending"} • ${formatMoney(b.amount, locale, currency)}`,
+                    isPending: true,
+                  })),
+                  ...dayBillInstances.map((i) => ({
+                    key: `inst-${i.id}`,
+                    name: i.billName || (isArabic ? "فاتورة" : "Bill"),
+                    sub: `${i.status} • ${i.dueDate}${i.billAmount != null ? ` • ${formatMoney(i.billAmount, locale, currency)}` : ""}`,
+                    isPending: false,
+                  })),
                 ].map((item) => (
-                  <View key={item.key} style={[styles.listItem, { borderColor: theme.colors.outlineVariant }]}>
-                    <View
-                      style={[
-                        styles.listItemIcon,
-                        {
-                          backgroundColor: item.isPending
-                            ? withAlpha(theme.colors.warning ?? theme.colors.tertiary, 0.12)
-                            : withAlpha(theme.colors.info ?? theme.colors.primary, 0.12),
-                        },
-                      ]}
-                    >
-                      <IconButton
-                        icon={item.isPending ? "clock-alert-outline" : "check-circle-outline"}
-                        iconColor={item.isPending ? (theme.colors.warning ?? theme.colors.tertiary) : (theme.colors.info ?? theme.colors.primary)}
-                        size={18} style={styles.noMargin}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.listItemTitle, { color: theme.colors.onSurface }]}>{item.name}</Text>
-                      <Text style={[styles.listItemSub, { color: theme.colors.onSurfaceVariant }]}>{item.sub}</Text>
-                    </View>
-                  </View>
+                  <List.Item
+                    key={item.key}
+                    title={item.name}
+                    description={item.sub}
+                    style={[
+                      styles.listItem,
+                      { borderColor: theme.colors.outlineVariant },
+                    ]}
+                    titleStyle={[
+                      styles.listItemTitle,
+                      { color: theme.colors.onSurface },
+                    ]}
+                    descriptionStyle={[
+                      styles.listItemSub,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                    left={() => (
+                      <View
+                        style={[
+                          styles.listItemIcon,
+                          {
+                            backgroundColor: item.isPending
+                              ? withAlpha(
+                                  theme.colors.warning ?? theme.colors.tertiary,
+                                  0.12,
+                                )
+                              : withAlpha(
+                                  theme.colors.info ?? theme.colors.primary,
+                                  0.12,
+                                ),
+                          },
+                        ]}
+                      >
+                        <IconButton
+                          icon={
+                            item.isPending
+                              ? "clock-alert-outline"
+                              : "check-circle-outline"
+                          }
+                          iconColor={
+                            item.isPending
+                              ? (theme.colors.warning ?? theme.colors.tertiary)
+                              : (theme.colors.info ?? theme.colors.primary)
+                          }
+                          size={18}
+                          style={styles.noMargin}
+                        />
+                      </View>
+                    )}
+                  />
                 ))}
               </View>
             )}
@@ -569,15 +991,27 @@ export default function DashboardScreen() {
 
         {/* ── Work Log Card ── */}
         <Animated.View style={cardStyle(cardAnims[2])}>
-          <Surface elevation={0} style={[styles.card, styles.cardBorder,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
-
+          <Surface
+            elevation={0}
+            style={[
+              styles.card,
+              styles.cardBorder,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}
+          >
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
+              <Text
+                style={[styles.cardTitle, { color: theme.colors.onSurface }]}
+              >
                 {isArabic ? "سجل الشغل" : "Work Log"}
               </Text>
               <Pressable onPress={() => router.push("/work")}>
-                <Text style={[styles.linkText, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.linkText, { color: theme.colors.primary }]}
+                >
                   {isArabic ? "عرض الكل" : "View all"}
                 </Text>
               </Pressable>
@@ -586,28 +1020,49 @@ export default function DashboardScreen() {
             {!dayWorkLog ? (
               <View style={styles.emptyWrap}>
                 <Text style={styles.emptyIcon}>💼</Text>
-                <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                  {isArabic ? "لا يوجد تسجيل لهذا اليوم" : "No work log for this day"}
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  {isArabic
+                    ? "لا يوجد تسجيل لهذا اليوم"
+                    : "No work log for this day"}
                 </Text>
               </View>
             ) : (
               <View style={{ gap: 10 }}>
                 <View style={styles.workRow}>
-                  <View
+                  <Chip
+                    icon="clock-outline"
+                    mode="outlined"
+                    selectedColor={theme.colors.info ?? theme.colors.primary}
                     style={[
                       styles.workChip,
                       {
-                        backgroundColor: withAlpha(theme.colors.info ?? theme.colors.primary, 0.1),
-                        borderColor: withAlpha(theme.colors.info ?? theme.colors.primary, 0.2),
+                        backgroundColor: withAlpha(
+                          theme.colors.info ?? theme.colors.primary,
+                          0.1,
+                        ),
+                        borderColor: withAlpha(
+                          theme.colors.info ?? theme.colors.primary,
+                          0.2,
+                        ),
                       },
                     ]}
+                    textStyle={[
+                      styles.workChipText,
+                      { color: theme.colors.info ?? theme.colors.primary },
+                    ]}
                   >
-                    <IconButton icon="clock-outline" iconColor={theme.colors.info ?? theme.colors.primary} size={14} style={styles.noMargin} />
-                    <Text style={[styles.workChipText, { color: theme.colors.info ?? theme.colors.primary }]}>
-                      {dayWorkLog.shiftStart || "-"} – {dayWorkLog.shiftEnd || "-"}
-                    </Text>
-                  </View>
-                  <View
+                    {dayWorkLog.shiftStart || "-"} –{" "}
+                    {dayWorkLog.shiftEnd || "-"}
+                  </Chip>
+                  <Chip
+                    icon="cash-minus"
+                    mode="outlined"
+                    selectedColor={theme.colors.error}
                     style={[
                       styles.workChip,
                       {
@@ -615,15 +1070,28 @@ export default function DashboardScreen() {
                         borderColor: withAlpha(theme.colors.error, 0.2),
                       },
                     ]}
+                    textStyle={[
+                      styles.workChipText,
+                      { color: theme.colors.error },
+                    ]}
                   >
-                    <IconButton icon="cash-minus" iconColor={theme.colors.error} size={14} style={styles.noMargin} />
-                    <Text style={[styles.workChipText, { color: theme.colors.error }]}>
-                      {formatMoney(dayWorkLog.totalWorkExpenses, locale, currency)}
-                    </Text>
-                  </View>
+                    {formatMoney(
+                      dayWorkLog.totalWorkExpenses,
+                      locale,
+                      currency,
+                    )}
+                  </Chip>
                 </View>
                 {dayWorkLog.note ? (
-                  <Text style={[styles.workNote, { color: theme.colors.onSurfaceVariant, borderColor: theme.colors.outlineVariant }]}>
+                  <Text
+                    style={[
+                      styles.workNote,
+                      {
+                        color: theme.colors.onSurfaceVariant,
+                        borderColor: theme.colors.outlineVariant,
+                      },
+                    ]}
+                  >
                     {dayWorkLog.note}
                   </Text>
                 ) : null}
@@ -634,15 +1102,24 @@ export default function DashboardScreen() {
 
         {/* ── Transactions ── */}
         <View>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>
+          <Text
+            style={[styles.sectionTitle, { color: theme.colors.onBackground }]}
+          >
             {isArabic ? "عمليات اليوم" : "Today Transactions"}
           </Text>
 
           {dayTransactions.length === 0 ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyIcon}>💸</Text>
-              <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                {isArabic ? "لا توجد معاملات اليوم" : "No transactions for this day"}
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
+                {isArabic
+                  ? "لا توجد معاملات اليوم"
+                  : "No transactions for this day"}
               </Text>
             </View>
           ) : (
@@ -652,55 +1129,127 @@ export default function DashboardScreen() {
                 ? {
                     icon: "swap-horizontal",
                     color: theme.colors.info ?? theme.colors.primary,
-                    bg: withAlpha(theme.colors.info ?? theme.colors.primary, 0.12),
+                    bg: withAlpha(
+                      theme.colors.info ?? theme.colors.primary,
+                      0.12,
+                    ),
                   }
-                : (transactionKindMeta[item.kind as keyof typeof transactionKindMeta]
-                  ?? transactionKindMeta.expense);
+                : (transactionKindMeta[
+                    item.kind as keyof typeof transactionKindMeta
+                  ] ?? transactionKindMeta.expense);
               const isIncome = item.signedAmount >= 0;
-              const accountName = accounts.find((acc) => acc.id === item.accountId)?.name;
-              const transferLabel = isIncome ? (isArabic ? "تحويل وارد" : "Transfer in") : (isArabic ? "تحويل صادر" : "Transfer out");
-              const titleText = item.note || (isTransfer ? transferLabel : item.kind);
+              const accountName = accounts.find(
+                (acc) => acc.id === item.accountId,
+              )?.name;
+              const transferLabel = isIncome
+                ? isArabic
+                  ? "تحويل وارد"
+                  : "Transfer in"
+                : isArabic
+                  ? "تحويل صادر"
+                  : "Transfer out";
+              const titleText =
+                item.note || (isTransfer ? transferLabel : item.kind);
               const subtitleParts = [
                 isTransfer
-                  ? (accountName
-                      ? (isIncome ? (isArabic ? `إلى ${accountName}` : `To ${accountName}`) : (isArabic ? `من ${accountName}` : `From ${accountName}`))
-                      : null)
+                  ? accountName
+                    ? isIncome
+                      ? isArabic
+                        ? `إلى ${accountName}`
+                        : `To ${accountName}`
+                      : isArabic
+                        ? `من ${accountName}`
+                        : `From ${accountName}`
+                    : null
                   : accountName,
                 new Date(item.occurredAt).toLocaleDateString(locale),
               ].filter(Boolean);
 
               const txAnim = new Animated.Value(0);
               return (
-                <Animated.View key={item.id} style={{ opacity: fadeAnim, transform: [{
-                  translateX: fadeAnim.interpolate({ inputRange:[0,1], outputRange: [isArabic ? 20 : -20, 0] }),
-                }]}}>
-                  <Surface elevation={0} style={[styles.txCard, styles.cardBorder,
-                    { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
-                    <Pressable
-                      onPress={() => router.push({ pathname: "/transactions/[id]", params: { id: String(item.id) } })}
-                      style={styles.txPressable}
-                      android_ripple={{ color: withAlpha(theme.colors.onSurface, 0.05) }}
-                    >
-                      {/* أيقونة */}
-                      <View style={[styles.txIcon, { backgroundColor: meta.bg }]}>
-                        <IconButton icon={meta.icon} iconColor={meta.color} size={20} style={styles.noMargin} />
-                      </View>
-                      {/* نص */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.txTitle, { color: theme.colors.onSurface }]} numberOfLines={1}>
-                          {titleText}
+                <Animated.View
+                  key={item.id}
+                  style={{
+                    opacity: fadeAnim,
+                    transform: [
+                      {
+                        translateX: fadeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [isArabic ? 20 : -20, 0],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Surface
+                    elevation={0}
+                    style={[
+                      styles.txCard,
+                      styles.cardBorder,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.outlineVariant,
+                      },
+                    ]}
+                  >
+                    <List.Item
+                      onPress={() =>
+                        router.push({
+                          pathname: "/transactions/[id]",
+                          params: { id: String(item.id) },
+                        })
+                      }
+                      title={titleText}
+                      description={
+                        subtitleParts.length > 0
+                          ? subtitleParts.join(" • ")
+                          : undefined
+                      }
+                      titleNumberOfLines={1}
+                      descriptionNumberOfLines={1}
+                      style={styles.txItem}
+                      titleStyle={[
+                        styles.txTitle,
+                        { color: theme.colors.onSurface },
+                      ]}
+                      descriptionStyle={[
+                        styles.txDate,
+                        { color: theme.colors.onSurfaceVariant },
+                      ]}
+                      left={() => (
+                        <View
+                          style={[styles.txIcon, { backgroundColor: meta.bg }]}
+                        >
+                          <IconButton
+                            icon={meta.icon}
+                            iconColor={meta.color}
+                            size={20}
+                            style={styles.noMargin}
+                          />
+                        </View>
+                      )}
+                      right={() => (
+                        <Text
+                          style={[
+                            styles.txAmount,
+                            {
+                              color:
+                                item.signedAmount >= 0
+                                  ? (theme.colors.success ??
+                                    theme.colors.secondary)
+                                  : theme.colors.error,
+                            },
+                          ]}
+                        >
+                          {formatMoney(
+                            item.signedAmount,
+                            locale,
+                            currency,
+                            true,
+                          )}
                         </Text>
-                        {subtitleParts.length > 0 ? (
-                          <Text style={[styles.txDate, { color: theme.colors.onSurfaceVariant }]}>
-                            {subtitleParts.join(" • ")}
-                          </Text>
-                        ) : null}
-                      </View>
-                      {/* المبلغ */}
-                      <Text style={[styles.txAmount, { color: item.signedAmount >= 0 ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.error }]}>
-                        {formatMoney(item.signedAmount, locale, currency, true)}
-                      </Text>
-                    </Pressable>
+                      )}
+                    />
                   </Surface>
                 </Animated.View>
               );
@@ -785,11 +1334,16 @@ const styles = StyleSheet.create({
 
   // ── Limit bar ──
   limitWrap: { paddingHorizontal: 20, gap: 6 },
-  limitRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  limitText:    { fontSize: 12, fontWeight: "700" },
+  limitRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  limitText: { fontSize: 12, fontWeight: "700" },
   limitSubText: { fontSize: 10, fontWeight: "600" },
   limitTrack: {
-    height: 6, borderRadius: 999,
+    height: 6,
+    borderRadius: 999,
     overflow: "hidden",
   },
   limitFill: { height: "100%", borderRadius: 999, overflow: "hidden" },
@@ -802,8 +1356,12 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   summaryCard: {
-    flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
-    paddingVertical: 12, paddingHorizontal: 14,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
@@ -814,7 +1372,10 @@ const styles = StyleSheet.create({
 
   // ── Scroll ──
   scrollContent: {
-    gap: 16, paddingHorizontal: 16, paddingBottom: 160, paddingTop: 20,
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 160,
+    paddingTop: 20,
   },
 
   // ── Cards ──
@@ -839,44 +1400,53 @@ const styles = StyleSheet.create({
   breakdownValue: { fontSize: 15, fontWeight: "900" },
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: {
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 999, borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   chipText: { fontSize: 10, fontWeight: "600" },
 
   // ── List items (bills) ──
   listItem: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    padding: 10, borderRadius: 16, borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
   },
   listItemIcon: { borderRadius: 12, overflow: "hidden" },
   listItemTitle: { fontSize: 13, fontWeight: "700" },
-  listItemSub:   { fontSize: 11, fontWeight: "600", marginTop: 1, opacity: 0.7 },
+  listItemSub: { fontSize: 11, fontWeight: "600", marginTop: 1, opacity: 0.7 },
 
   // ── Work log ──
   workRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   workChip: {
-    flexDirection: "row", alignItems: "center", gap: 2,
-    paddingRight: 10, borderRadius: 999, borderWidth: 1,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   workChipText: { fontSize: 12, fontWeight: "700" },
   workNote: {
-    fontSize: 12, fontWeight: "600",
-    padding: 10, borderRadius: 12, borderWidth: 1,
+    fontSize: 12,
+    fontWeight: "600",
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
     lineHeight: 18,
   },
 
   // ── Transactions ──
-  sectionTitle: { fontSize: 20, fontWeight: "900", marginBottom: 12, paddingHorizontal: 4 },
-  txCard: { borderRadius: 20, marginBottom: 10, overflow: "hidden" },
-  txPressable: {
-    flexDirection: "row", alignItems: "center",
-    gap: 12, padding: 14,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
+  txCard: { borderRadius: 20, marginBottom: 10, overflow: "hidden" },
+  txItem: { paddingVertical: 6, paddingHorizontal: 8 },
   txIcon: { borderRadius: 14, overflow: "hidden" },
   txTitle: { fontSize: 14, fontWeight: "700" },
-  txDate:  { fontSize: 11, fontWeight: "600", marginTop: 2, opacity: 0.6 },
-  txAmount:{ fontSize: 15, fontWeight: "900" },
+  txDate: { fontSize: 11, fontWeight: "600", marginTop: 2, opacity: 0.6 },
+  txAmount: { fontSize: 15, fontWeight: "900" },
 
   // ── Empty states ──
   emptyWrap: { alignItems: "center", paddingVertical: 16, gap: 6 },

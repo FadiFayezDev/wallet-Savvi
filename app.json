@@ -66,7 +66,8 @@
             }
           }
         }
-      ]
+      ],
+      "./withSplitApks.js"
     ],
     "experiments": {
       "typedRoutes": true,
