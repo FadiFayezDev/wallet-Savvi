@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
@@ -30,35 +30,35 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t('tabs.dashboard'),
-          tabBarIcon: ({ color }) => <Ionicons size={22} name="grid-outline" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={22} name="view-dashboard-outline" color={color} />,
         }}
       />
       <Tabs.Screen
         name="goals"
         options={{
           title: t('tabs.goals'),
-          tabBarIcon: ({ color }) => <Ionicons size={22} name="flag-outline" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={22} name="flag-outline" color={color} />,
         }}
       />
       <Tabs.Screen
         name="categories"
         options={{
           title: 'Categories',
-          tabBarIcon: ({ color }) => <Ionicons size={22} name="albums-outline" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={22} name="shape-outline" color={color} />,
         }}
       />
       <Tabs.Screen
         name="months"
         options={{
           title: t('tabs.tools'),
-          tabBarIcon: ({ color }) => <Ionicons size={22} name="construct-outline" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={22} name="hammer-wrench" color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t('tabs.settings'),
-          tabBarIcon: ({ color }) => <Ionicons size={22} name="settings-outline" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={22} name="cog-outline" color={color} />,
         }}
       />
       <Tabs.Screen

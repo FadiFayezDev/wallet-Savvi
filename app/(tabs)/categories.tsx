@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Animated, Pressable, ScrollView,
-  StyleSheet, Text, TextInput, View,
+  Alert, Animated, Pressable,
+  StyleSheet, View,
 } from 'react-native';
 
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { IconButton, useTheme } from 'react-native-paper';
+import {
+  Button,
+  IconButton,
+  Surface,
+  Text,
+  TextInput,
+  useTheme,
+} from 'react-native-paper';
 
 import { EmptyState } from '@/src/components/common/EmptyState';
+import { MaterialScreen } from '@/src/components/layout/MaterialScreen';
 import { categoryService } from '@/src/services/categoryService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
+import type { AppTheme } from '@/src/types/appTheme';
 import type { Category } from '@/src/types/domain';
 import { confirmAction } from '@/src/utils/confirm';
 import { withAlpha } from '@/src/utils/colors';
@@ -26,46 +35,49 @@ function CategoryCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const theme  = useTheme();
-  const scaleA = useRef(new Animated.Value(1)).current;
-
-  const onPressIn  = () => Animated.spring(scaleA, { toValue: 0.97, useNativeDriver: true, tension: 200, friction: 10 }).start();
-  const onPressOut = () => Animated.spring(scaleA, { toValue: 1,    useNativeDriver: true, tension: 200, friction: 10 }).start();
+  const theme  = useTheme<AppTheme>();
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleA }] }}>
-      <View style={[styles.categoryCard, {
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.outlineVariant,
-      }]}>
+    <View>
+      <Surface
+        elevation={0}
+        style={[styles.categoryCard, {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outlineVariant,
+        }]}
+      >
         {/* شريط اللون الجانبي */}
         <View style={[styles.colorBar, { backgroundColor: activeColor }]} />
 
         <View style={{ flex: 1 }}>
-          <Text style={[styles.categoryName, { color: theme.colors.onSurface }]}>
+          <Text variant="titleSmall" style={[styles.categoryName, { color: theme.colors.onSurface }]}>
             {locale === 'ar' ? item.nameAr : item.nameEn}
           </Text>
         </View>
 
         {/* أزرار */}
         <View style={styles.cardActions}>
-          <Pressable
+          <IconButton
+            icon="pencil-outline"
+            iconColor={theme.colors.primary}
+            size={20}
+            mode="contained-tonal"
+            containerColor={withAlpha(theme.colors.primary, 0.14)}
+            style={styles.actionBtn}
             onPress={onEdit}
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            style={[styles.actionBtn, { backgroundColor: withAlpha(theme.colors.primary, 0.14) }]}
-          >
-            <IconButton icon="pencil-outline" iconColor={theme.colors.primary} size={16} style={styles.noMargin} />
-          </Pressable>
-          <Pressable
+          />
+          <IconButton
+            icon="trash-can-outline"
+            iconColor={theme.colors.error}
+            size={20}
+            mode="contained-tonal"
+            containerColor={withAlpha(theme.colors.error, 0.14)}
+            style={styles.actionBtn}
             onPress={onDelete}
-            style={[styles.actionBtn, { backgroundColor: withAlpha(theme.colors.error, 0.14) }]}
-          >
-            <IconButton icon="trash-can-outline" iconColor={theme.colors.error} size={16} style={styles.noMargin} />
-          </Pressable>
+          />
         </View>
-      </View>
-    </Animated.View>
+      </Surface>
+    </View>
   );
 }
 
@@ -74,7 +86,7 @@ export default function CategoriesTabScreen() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const settings = useSettingsStore((s) => s.settings);
   const locale   = settings?.locale ?? 'ar';
-  const theme    = useTheme();
+  const theme    = useTheme<AppTheme>();
   const isAr     = locale === 'ar';
 
   const [categories,      setCategories]      = useState<Category[]>([]);
@@ -87,9 +99,9 @@ export default function CategoriesTabScreen() {
   const didInitFromParam = useRef(false);
 
   const expenseColor = theme.colors.error;
-  const incomeColor  = theme.colors.success;
+  const incomeColor  = theme.colors.success ?? theme.colors.secondary;
   const expenseOn    = theme.colors.onError;
-  const incomeOn     = theme.colors.onSuccess;
+  const incomeOn     = theme.colors.onSuccess ?? theme.colors.onSecondary;
   const activeColor  = activeTab === 'income' ? incomeColor : expenseColor;
   const activeOn     = activeTab === 'income' ? incomeOn : expenseOn;
 
@@ -140,15 +152,6 @@ export default function CategoriesTabScreen() {
     }
   };
 
-  const inputStyle = (active: boolean) => ([
-    styles.input,
-    {
-      backgroundColor: theme.colors.surfaceVariant,
-      color: theme.colors.onSurface,
-      borderColor: active ? activeColor : 'transparent',
-    },
-  ]);
-
   // ── Animated tab indicator ──
   const indicatorLeft = tabAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '50%'] });
 
@@ -164,19 +167,17 @@ export default function CategoriesTabScreen() {
   }, [params?.tab, activeTab]);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={[styles.scroll, { paddingTop: 16 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* ── عنوان ── */}
+    <MaterialScreen layout="tab">
       <View style={styles.titleRow}>
-        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+        <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>
           {isAr ? 'الفئات' : 'Categories'}
         </Text>
-        <View style={[styles.countBadge, { backgroundColor: withAlpha(activeColor, 0.14) }]}>
-          <Text style={[styles.countText, { color: activeColor }]}>{filtered.length}</Text>
-        </View>
+        <Surface
+          elevation={0}
+          style={[styles.countBadge, { backgroundColor: withAlpha(activeColor, 0.14) }]}
+        >
+          <Text variant="labelLarge" style={[styles.countText, { color: activeColor }]}>{filtered.length}</Text>
+        </Surface>
       </View>
 
       {/* ── Tabs بـ animated indicator ── */}
@@ -195,9 +196,9 @@ export default function CategoriesTabScreen() {
               <IconButton
                 icon={tab === 'income' ? 'trending-up' : 'trending-down'}
                 iconColor={isActive ? (tab === 'income' ? incomeOn : expenseOn) : theme.colors.onSurfaceVariant}
-                size={16} style={styles.noMargin}
+                size={16} style={{ margin: 0 }}
               />
-              <Text style={[styles.tabText, {
+              <Text variant="labelLarge" style={[styles.tabText, {
                 color: isActive ? (tab === 'income' ? incomeOn : expenseOn) : theme.colors.onSurfaceVariant,
               }]}>
                 {tab === 'income'
@@ -210,48 +211,49 @@ export default function CategoriesTabScreen() {
       </View>
 
       {/* ── فورم ── */}
-      <View style={[styles.formCard, {
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.outlineVariant,
-      }]}>
-        <Text style={[styles.formTitle, { color: theme.colors.onSurface }]}>
+      <Surface
+        elevation={0}
+        style={[styles.formCard, {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outlineVariant,
+        }]}
+      >
+        <Text variant="titleMedium" style={[styles.formTitle, { color: theme.colors.onSurface }]}>
           {editingCategory
             ? (isAr ? '✏ تعديل فئة' : '✏ Edit Category')
             : (isAr ? '+ فئة جديدة' : '+ New Category')}
         </Text>
 
         <TextInput
+          mode="outlined"
           value={name}
           onChangeText={setName}
           placeholder={isAr ? 'اسم الفئة' : 'Category name'}
-          placeholderTextColor={theme.colors.onSurfaceVariant}
           onFocus={() => setFocused('name')}
           onBlur={() => setFocused(null)}
-          style={inputStyle(focused === 'name')}
+          outlineColor={focused === 'name' ? activeColor : theme.colors.outline}
+          activeOutlineColor={activeColor}
+          style={styles.paperInput}
         />
 
         <View style={styles.formBtns}>
-          <Pressable
+          <Button
+            mode="contained"
+            buttonColor={activeColor}
+            textColor={activeOn}
             onPress={submit}
-            style={[styles.submitBtn, { backgroundColor: activeColor, flex: 1 }]}
+            style={[styles.submitBtn, { flex: 1 }]}
           >
-            <Text style={[styles.submitText, { color: activeOn }]}>
-              {editingCategory ? (isAr ? 'حفظ' : 'Save') : (isAr ? 'إضافة' : 'Add')}
-            </Text>
-          </Pressable>
+            {editingCategory ? (isAr ? 'حفظ' : 'Save') : (isAr ? 'إضافة' : 'Add')}
+          </Button>
 
           {editingCategory && (
-            <Pressable
-              onPress={resetForm}
-              style={[styles.cancelBtn, { backgroundColor: theme.colors.surfaceVariant }]}
-            >
-              <Text style={[styles.cancelText, { color: theme.colors.onSurfaceVariant }]}>
-                {isAr ? 'إلغاء' : 'Cancel'}
-              </Text>
-            </Pressable>
+            <Button mode="outlined" onPress={resetForm} style={styles.cancelBtn}>
+              {isAr ? 'إلغاء' : 'Cancel'}
+            </Button>
           )}
         </View>
-      </View>
+      </Surface>
 
       {/* ── القائمة ── */}
       <View style={styles.list}>
@@ -288,18 +290,16 @@ export default function CategoriesTabScreen() {
           ))
         )}
       </View>
-    </ScrollView>
+    </MaterialScreen>
   );
 }
 
 // ── Styles ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 80, gap: 16 },
-
-  titleRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title:     { fontSize: 26, fontWeight: '900' },
+  titleRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+  title:     {},
   countBadge:{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  countText: { fontSize: 13, fontWeight: '800' },
+  countText: { fontWeight: '800' },
 
   // tabs
   tabsWrap: {
@@ -314,21 +314,15 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', paddingVertical: 10, gap: 4, zIndex: 1,
   },
-  tabText: { fontSize: 14, fontWeight: '700' },
+  tabText: { fontWeight: '700' },
 
   // form
   formCard: { borderRadius: 24, padding: 18, borderWidth: 1, gap: 10 },
-  formTitle: { fontSize: 15, fontWeight: '800' },
-  input: {
-    borderRadius: 14, paddingHorizontal: 16,
-    paddingVertical: 13, fontSize: 14, borderWidth: 1.5,
-  },
+  formTitle: {},
+  paperInput: { backgroundColor: 'transparent' },
   formBtns:   { flexDirection: 'row', gap: 8, marginTop: 2 },
-  submitBtn:  { borderRadius: 14, paddingVertical: 12, alignItems: 'center' },
-  submitText: { fontWeight: '700', fontSize: 14 },
-  cancelBtn:  { borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { fontWeight: '700', fontSize: 14 },
-  noMargin:   { margin: 0 },
+  submitBtn:  { borderRadius: 14 },
+  cancelBtn:  { borderRadius: 14, justifyContent: 'center' },
 
   // category card
   categoryCard: {
@@ -337,9 +331,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden', paddingVertical: 12, paddingEnd: 8,
   },
   colorBar:     { width: 4, alignSelf: 'stretch', marginEnd: 12, borderRadius: 999 },
-  categoryName: { fontSize: 15, fontWeight: '700' },
+  categoryName: { fontWeight: '700' },
   cardActions:  { flexDirection: 'row', gap: 4 },
-  actionBtn:    { borderRadius: 10, overflow: 'hidden' },
+  actionBtn:    { margin: 0 },
 
   // list
   list: { gap: 8, marginBottom: 32 },

@@ -1,12 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { IconButton, Menu, useTheme } from "react-native-paper";
+import { Card, IconButton, Menu, SegmentedButtons, Text, useTheme } from "react-native-paper";
 import dayjs from "dayjs";
 
 import { EmptyState } from "@/src/components/common/EmptyState";
+import { MATERIAL_H } from "@/src/components/layout/MaterialScreen";
 import { accountService } from "@/src/services/accountService";
 import { categoryService } from "@/src/services/categoryService";
 import { reportService } from "@/src/services/reportService";
@@ -15,6 +16,7 @@ import type { Account, Category, MonthlyReport } from "@/src/types/domain";
 import { formatMoney } from "@/src/utils/money";
 import { toMonthKey } from "@/src/utils/date";
 import { ACCOUNT_GROUPS } from "@/src/constants/accountGroups";
+import type { AppTheme } from "@/src/types/appTheme";
 import { withAlpha } from "@/src/utils/colors";
 import { confirmAction } from "@/src/utils/confirm";
 
@@ -24,33 +26,24 @@ type AccountActionMode = "none" | "edit" | "delete";
 
 export default function ToolsScreen() {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const theme = useTheme<AppTheme>();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ToolsTab>("account");
   const [menuVisible, setMenuVisible] = useState(false);
   const [accountActionMode, setAccountActionMode] = useState<AccountActionMode>("none");
 
-  const tabStyle = (tab: ToolsTab) => {
-    const isActive = tab === activeTab;
-    return {
-      flex: 1,
-      borderRadius: 12,
-      paddingVertical: 10,
-      alignItems: "center" as const,
-      backgroundColor: isActive ? theme.colors.primary : "transparent",
-    };
-  };
-
-  const tabTextStyle = (tab: ToolsTab) => ({
-    fontSize: 13,
-    fontWeight: "700" as const,
-    color: tab === activeTab ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
-  });
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.onSurface }}>
+      <View
+        style={{
+          paddingHorizontal: MATERIAL_H,
+          paddingTop: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, flex: 1 }}>
           {t("tools.title")}
         </Text>
         <Menu
@@ -100,27 +93,16 @@ export default function ToolsScreen() {
         </Menu>
       </View>
 
-      {/* Internal Tabs */}
-      <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-        <View
-          style={{
-            backgroundColor: theme.colors.surfaceVariant,
-            borderRadius: 16,
-            padding: 4,
-            flexDirection: "row",
-            gap: 6,
-          }}
-        >
-          <Pressable onPress={() => setActiveTab("budget")} style={tabStyle("budget")}>
-            <Text style={tabTextStyle("budget")}>{t("tools.budget")}</Text>
-          </Pressable>
-          <Pressable onPress={() => setActiveTab("account")} style={tabStyle("account")}>
-            <Text style={tabTextStyle("account")}>{t("tools.account")}</Text>
-          </Pressable>
-          <Pressable onPress={() => setActiveTab("history")} style={tabStyle("history")}>
-            <Text style={tabTextStyle("history")}>{t("tools.history")}</Text>
-          </Pressable>
-        </View>
+      <View style={{ paddingHorizontal: MATERIAL_H, marginTop: 12 }}>
+        <SegmentedButtons
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as ToolsTab)}
+          buttons={[
+            { value: "budget", label: t("tools.budget") },
+            { value: "account", label: t("tools.account") },
+            { value: "history", label: t("tools.history") },
+          ]}
+        />
       </View>
 
       <View style={{ flex: 1 }}>
@@ -138,32 +120,25 @@ export default function ToolsScreen() {
 }
 
 function BudgetTab() {
-  const theme = useTheme();
+  const theme = useTheme<AppTheme>();
   const { t, i18n } = useTranslation();
   const isAr = i18n.language.startsWith("ar");
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+      contentContainerStyle={{ paddingHorizontal: MATERIAL_H, paddingTop: 12, paddingBottom: 72 }}
     >
-      <View
-        style={{
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: theme.colors.outlineVariant,
-          backgroundColor: theme.colors.surface,
-          padding: 20,
-          gap: 8,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "800", color: theme.colors.onSurface }}>
-          {t("tools.budget")}
-        </Text>
-        <Text style={{ fontSize: 13, color: theme.colors.onSurfaceVariant }}>
-          {isAr ? "الميزة قيد التطوير في هذا الإصدار." : "This section is coming soon in this release."}
-        </Text>
-      </View>
+      <Card mode="elevated" elevation={1} style={{ borderRadius: theme.roundness * 2 }}>
+        <Card.Content style={{ gap: 8 }}>
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+            {t("tools.budget")}
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            {isAr ? "الميزة قيد التطوير في هذا الإصدار." : "This section is coming soon in this release."}
+          </Text>
+        </Card.Content>
+      </Card>
     </ScrollView>
   );
 }
@@ -175,7 +150,7 @@ function AccountTab({
   actionMode: AccountActionMode;
   onActionModeChange: (mode: AccountActionMode) => void;
 }) {
-  const theme = useTheme();
+  const theme = useTheme<AppTheme>();
   const { t } = useTranslation();
   const router = useRouter();
   const settings = useSettingsStore((state) => state.settings);
@@ -280,7 +255,7 @@ function AccountTab({
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+      contentContainerStyle={{ paddingHorizontal: MATERIAL_H, paddingTop: 8, paddingBottom: 80 }}
     >
       {showActionBanner ? (
         <View
@@ -509,7 +484,7 @@ function AccountTab({
 
 function HistoryTab() {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const theme = useTheme<AppTheme>();
   const params = useLocalSearchParams<{ month?: string }>();
   const settings = useSettingsStore((state) => state.settings);
   const [reports, setReports] = useState<MonthlyReport[]>([]);
@@ -572,7 +547,7 @@ function HistoryTab() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 80 }}
+      contentContainerStyle={{ paddingHorizontal: MATERIAL_H, paddingTop: 16, paddingBottom: 80 }}
     >
       {/* Month Picker */}
       <View style={{ borderRadius: 16, backgroundColor: theme.colors.surface, padding: 16 }}>

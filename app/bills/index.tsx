@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { useTheme } from "react-native-paper";
+import { IconButton, Text as PaperText, useTheme } from "react-native-paper";
+
+import { MaterialScreen } from "@/src/components/layout/MaterialScreen";
 
 import { CalculatorField } from "@/src/components/common/CalculatorField";
 import { DatePickerField } from "@/src/components/common/DatePickerField";
@@ -155,21 +157,22 @@ export default function BillsScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ padding: 16, paddingTop: 16 }}
+    <MaterialScreen
+      layout="stack"
+      header={
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 }}>
+          <IconButton
+            icon="arrow-left"
+            iconColor={theme.colors.onSurface}
+            onPress={() => router.back()}
+            style={{ margin: 0 }}
+          />
+          <PaperText variant="headlineSmall" style={{ color: theme.colors.onSurface, flex: 1 }}>
+            {locale === "ar" ? "الفواتير الدورية" : "Recurring Bills"}
+          </PaperText>
+        </View>
+      }
     >
-      <View className="flex-row items-center justify-between mb-4">
-        <Text style={{ color: theme.colors.onBackground }} className="text-2xl font-black">
-          {locale === "ar" ? "الفواتير الدورية" : "Recurring Bills"}
-        </Text>
-        <Pressable onPress={() => router.back()}>
-          <Text style={{ color: theme.colors.primary, fontWeight: "700" }}>
-            {locale === "ar" ? "رجوع" : "Back"}
-          </Text>
-        </Pressable>
-      </View>
-
       <View
         style={{
           borderRadius: 16,
@@ -507,6 +510,6 @@ export default function BillsScreen() {
           </View>
         )}
       </View>
-    </ScrollView>
+    </MaterialScreen>
   );
 }

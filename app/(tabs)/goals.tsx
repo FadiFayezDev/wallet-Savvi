@@ -1,16 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Animated, Pressable, ScrollView,
-  StyleSheet, Text, TextInput, View,
+  Alert, Animated,
+  StyleSheet, View,
 } from 'react-native';
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { IconButton, useTheme } from 'react-native-paper';
+import {
+  Button,
+  Card,
+  ProgressBar,
+  Surface,
+  Text,
+  TextInput,
+  TouchableRipple,
+  useTheme,
+} from 'react-native-paper';
 
 import { EmptyState } from '@/src/components/common/EmptyState';
+import { MaterialScreen } from '@/src/components/layout/MaterialScreen';
 import { goalService } from '@/src/services/goalService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
+import type { AppTheme } from '@/src/types/appTheme';
 import type { Goal } from '@/src/types/domain';
 import { withAlpha } from '@/src/utils/colors';
 import { formatMoney } from '@/src/utils/money';
@@ -21,7 +32,7 @@ function GoalCard({
 }: {
   goal: Goal; index: number; locale: 'ar' | 'en'; currency: string; onPress: () => void;
 }) {
-  const theme    = useTheme();
+  const theme    = useTheme<AppTheme>();
   const anim     = useRef(new Animated.Value(0)).current;
   const scaleRef = useRef(new Animated.Value(1)).current;
 
@@ -40,7 +51,7 @@ function GoalCard({
   const onPressIn  = () => Animated.spring(scaleRef, { toValue: 0.97, useNativeDriver: true, tension: 200, friction: 10 }).start();
   const onPressOut = () => Animated.spring(scaleRef, { toValue: 1,    useNativeDriver: true, tension: 200, friction: 10 }).start();
 
-  const barColor = isDone ? theme.colors.success : theme.colors.primary;
+  const barColor = isDone ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.primary;
 
   return (
     <Animated.View style={{
@@ -50,50 +61,60 @@ function GoalCard({
         { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
       ],
     }}>
-      <Pressable
+      <TouchableRipple
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        style={[styles.card, {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.outlineVariant,
-        }]}
+        borderless={false}
+        style={[styles.cardRipple, { borderRadius: 20 }]}
       >
-        {/* الاسم + النسبة */}
-        <View style={styles.cardRow}>
-          <Text style={[styles.goalName, { color: theme.colors.onSurface }]} numberOfLines={1}>
-            {goal.name}
-          </Text>
-          <View style={[styles.percentBadge, {
-            backgroundColor: isDone
-              ? withAlpha(theme.colors.success, 0.12)
-              : withAlpha(theme.colors.primary, 0.12),
-          }]}>
-            <Text style={[styles.percentText, { color: isDone ? theme.colors.success : theme.colors.primary }]}>
-              {Math.round(progress * 100)}%
+        <Surface
+          elevation={0}
+          style={[styles.card, {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.outlineVariant,
+          }]}
+        >
+          {/* الاسم + النسبة */}
+          <View style={styles.cardRow}>
+            <Text variant="titleMedium" style={[styles.goalName, { color: theme.colors.onSurface }]} numberOfLines={1}>
+              {goal.name}
+            </Text>
+            <Surface
+              elevation={0}
+              style={[styles.percentBadge, {
+                backgroundColor: isDone
+                  ? withAlpha(theme.colors.success ?? theme.colors.secondary, 0.12)
+                  : withAlpha(theme.colors.primary, 0.12),
+              }]}
+            >
+              <Text variant="labelLarge" style={[styles.percentText, { color: isDone ? (theme.colors.success ?? theme.colors.secondary) : theme.colors.primary }]}>
+                {Math.round(progress * 100)}%
+              </Text>
+            </Surface>
+          </View>
+
+          <ProgressBar
+            progress={progress}
+            color={barColor}
+            style={[styles.track, { marginTop: 12, backgroundColor: theme.colors.surfaceVariant }]}
+          />
+
+          {/* الأرقام */}
+          <View style={[styles.cardRow, { marginTop: 10 }]}>
+            <Text variant="bodySmall" style={[styles.moneyLabel, { color: theme.colors.onSurfaceVariant }]}>
+              {formatMoney(goal.savedAmount, locale, currency)}
+            </Text>
+            <Text variant="bodySmall" style={[styles.moneyLabel, { color: theme.colors.onSurfaceVariant }]}>
+              / {formatMoney(goal.targetAmount, locale, currency)}
             </Text>
           </View>
-        </View>
 
-        {/* شريط التقدم */}
-        <View style={[styles.track, { backgroundColor: theme.colors.surfaceVariant, marginTop: 12 }]}>
-          <Animated.View style={[styles.fill, { backgroundColor: barColor, width: `${Math.round(progress * 100)}%` }]} />
-        </View>
-
-        {/* الأرقام */}
-        <View style={[styles.cardRow, { marginTop: 10 }]}>
-          <Text style={[styles.moneyLabel, { color: theme.colors.onSurfaceVariant }]}>
-            {formatMoney(goal.savedAmount, locale, currency)}
-          </Text>
-          <Text style={[styles.moneyLabel, { color: theme.colors.onSurfaceVariant }]}>
-            / {formatMoney(goal.targetAmount, locale, currency)}
-          </Text>
-        </View>
-
-        {isDone && (
-          <Text style={[styles.doneTag, { color: theme.colors.success }]}>✓ مكتمل</Text>
-        )}
-      </Pressable>
+          {isDone && (
+            <Text variant="labelLarge" style={[styles.doneTag, { color: theme.colors.success }]}>✓ مكتمل</Text>
+          )}
+        </Surface>
+      </TouchableRipple>
     </Animated.View>
   );
 }
@@ -102,7 +123,7 @@ function GoalCard({
 export default function GoalsTab() {
   const router   = useRouter();
   const { t }    = useTranslation();
-  const theme    = useTheme();
+  const theme    = useTheme<AppTheme>();
   const settings = useSettingsStore((s) => s.settings);
 
   const [goals,  setGoals]  = useState<Goal[]>([]);
@@ -134,68 +155,50 @@ export default function GoalsTab() {
     }
   };
 
-  const inputStyle = (active: boolean) => ([
-    styles.input,
-    {
-      backgroundColor: theme.colors.surfaceVariant,
-      color: theme.colors.onSurface,
-      borderColor: active ? theme.colors.primary : 'transparent',
-    },
-  ]);
-
   const safeGoals = goals.filter((g): g is Goal => Boolean(g && g.name));
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={[styles.scroll, { paddingTop: 16 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* ── فورم إضافة هدف ── */}
-      <View style={[styles.formCard, {
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.outlineVariant,
-      }]}>
-        <Text style={[styles.formTitle, { color: theme.colors.onSurface }]}>
-          {t('goals.newGoal')}
-        </Text>
-
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder={t('goals.goalName')}
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          onFocus={() => setFocused('name')}
-          onBlur={() => setFocused(null)}
-          style={inputStyle(focused === 'name')}
-        />
-
-        <TextInput
-          value={target}
-          onChangeText={setTarget}
-          placeholder={t('goals.targetAmount')}
-          keyboardType="decimal-pad"
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          onFocus={() => setFocused('amount')}
-          onBlur={() => setFocused(null)}
-          style={inputStyle(focused === 'amount')}
-        />
-
-        <Pressable
-          onPress={createGoal}
-          style={[styles.saveBtn, { backgroundColor: theme.colors.primary }]}
-        >
-          <IconButton icon="plus" iconColor={theme.colors.onPrimary} size={18} style={styles.noMargin} />
-          <Text style={[styles.saveBtnText, { color: theme.colors.onPrimary }]}>
-            {t('common.save')}
+    <MaterialScreen title={t("tabs.goals")} layout="tab">
+      <Card mode="elevated" elevation={1} style={{ borderRadius: theme.roundness * 2 }}>
+        <Card.Content style={styles.formInner}>
+          <Text variant="titleMedium" style={[styles.formTitle, { color: theme.colors.onSurface }]}>
+            {t("goals.newGoal")}
           </Text>
-        </Pressable>
-      </View>
 
-      {/* ── قائمة الأهداف ── */}
+          <TextInput
+            mode="outlined"
+            value={name}
+            onChangeText={setName}
+            placeholder={t("goals.goalName")}
+            onFocus={() => setFocused("name")}
+            onBlur={() => setFocused(null)}
+            outlineColor={focused === "name" ? theme.colors.primary : theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            style={styles.paperInput}
+          />
+
+          <TextInput
+            mode="outlined"
+            value={target}
+            onChangeText={setTarget}
+            placeholder={t("goals.targetAmount")}
+            keyboardType="decimal-pad"
+            onFocus={() => setFocused("amount")}
+            onBlur={() => setFocused(null)}
+            outlineColor={focused === "amount" ? theme.colors.primary : theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            style={styles.paperInput}
+          />
+
+          <Button mode="contained" icon="plus" onPress={createGoal} style={styles.saveBtn}>
+            {t("common.save")}
+          </Button>
+        </Card.Content>
+      </Card>
+
       <View style={styles.list}>
         {safeGoals.length === 0 ? (
-          <EmptyState title={t('common.noData')} />
+          <EmptyState title={t("common.noData")} />
         ) : (
           safeGoals.map((goal, i) => (
             <GoalCard
@@ -204,50 +207,39 @@ export default function GoalsTab() {
               index={i}
               locale={locale}
               currency={currency}
-              onPress={() => router.push({ pathname: '/goals/[id]', params: { id: String(goal.id) } })}
+              onPress={() => router.push({ pathname: "/goals/[id]", params: { id: String(goal.id) } })}
             />
           ))
         )}
       </View>
-    </ScrollView>
+    </MaterialScreen>
   );
 }
 
 // ── Styles ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 80, gap: 16 },
-
-  // فورم
-  formCard: {
-    borderRadius: 24, padding: 18,
-    borderWidth: 1, gap: 10,
-  },
-  formTitle: { fontSize: 15, fontWeight: '800', marginBottom: 2 },
-  input: {
-    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13,
-    fontSize: 14, borderWidth: 1.5,
-  },
+  formInner: { gap: 10, paddingVertical: 4 },
+  formTitle: { marginBottom: 2 },
+  paperInput: { backgroundColor: "transparent" },
   saveBtn: {
-    marginTop: 4, borderRadius: 14, paddingVertical: 10,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    marginTop: 4,
+    borderRadius: 14,
   },
-  saveBtnText: { fontWeight: '700', fontSize: 14 },
-  noMargin: { margin: 0 },
 
   // list
   list: { gap: 10, marginBottom: 32 },
 
   // card
+  cardRipple: { overflow: 'hidden' },
   card: {
     borderRadius: 20, padding: 16, borderWidth: 1,
   },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  goalName: { fontSize: 15, fontWeight: '700', flex: 1, marginEnd: 8 },
+  goalName: { flex: 1, marginEnd: 8 },
   percentBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  percentText:  { fontSize: 12, fontWeight: '800' },
+  percentText:  { fontWeight: '800' },
   track: { height: 7, borderRadius: 999, overflow: 'hidden' },
-  fill:  { height: '100%', borderRadius: 999 },
-  moneyLabel: { fontSize: 12, fontWeight: '600' },
+  moneyLabel: { fontWeight: '600' },
   doneTag: {
     marginTop: 8, alignSelf: 'flex-start',
     fontSize: 11, fontWeight: '700',

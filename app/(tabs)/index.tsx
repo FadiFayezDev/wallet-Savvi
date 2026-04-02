@@ -5,14 +5,18 @@ import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 import {
+  Button,
   Chip,
   FAB,
+  Icon,
   IconButton,
   List,
   Portal,
+  ProgressBar,
   Surface,
+  Text,
   useTheme,
 } from "react-native-paper";
 import type { MD3Colors, MD3Theme } from "react-native-paper";
@@ -167,7 +171,6 @@ export default function DashboardScreen() {
   const headerAnim = useRef(new Animated.Value(0)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const limitBarAnim = useRef(new Animated.Value(0)).current;
 
   // staggered cards: breakdown, bills, worklog
   const cardAnims = useRef(
@@ -357,18 +360,6 @@ export default function DashboardScreen() {
       ),
     ).start();
   }, [selectedDate]);
-
-  // أنيميشن الـ limit bar
-  useEffect(() => {
-    if (!limitStatus.hasLimit) return;
-    limitBarAnim.setValue(0);
-    Animated.timing(limitBarAnim, {
-      toValue: limitStatus.progress,
-      duration: 900,
-      delay: 400,
-      useNativeDriver: false, // نحتاج width
-    }).start();
-  }, [limitStatus.progress, limitStatus.hasLimit]);
 
   // ── مساعد لـ card anim ─────────────────────────────────────
   const cardStyle = (anim: Animated.Value) => ({
@@ -583,36 +574,15 @@ export default function DashboardScreen() {
                       { backgroundColor: headerBorder },
                     ]}
                   >
-                    <Animated.View
-                      style={[
-                        styles.limitFill,
-                        {
-                          width: limitBarAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ["0%", "100%"],
-                          }),
-                        },
-                      ]}
-                    >
-                      <LinearGradient
-                        colors={
-                          limitStatus.isOver
-                            ? [
-                                theme.colors.error,
-                                theme.colors.errorContainer ??
-                                  theme.colors.error,
-                              ]
-                            : [
-                                theme.colors.success ?? theme.colors.secondary,
-                                theme.colors.successContainer ??
-                                  theme.colors.secondaryContainer,
-                              ]
-                        }
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={StyleSheet.absoluteFill}
-                      />
-                    </Animated.View>
+                    <ProgressBar
+                      progress={limitStatus.progress}
+                      color={
+                        limitStatus.isOver
+                          ? theme.colors.error
+                          : (theme.colors.success ?? theme.colors.secondary)
+                      }
+                      style={styles.limitProgress}
+                    />
                   </View>
                 </View>
               )}
@@ -894,19 +864,26 @@ export default function DashboardScreen() {
               >
                 {isArabic ? "فواتير اليوم" : "Today Bills"}
               </Text>
-              <Pressable onPress={() => router.push("/bills")}>
-                <Text
-                  style={[styles.linkText, { color: theme.colors.primary }]}
-                >
-                  {isArabic ? "عرض الكل" : "View all"}
-                </Text>
-              </Pressable>
+              <Button
+                mode="text"
+                compact
+                onPress={() => router.push("/bills")}
+                textColor={theme.colors.primary}
+                labelStyle={styles.linkText}
+              >
+                {isArabic ? "عرض الكل" : "View all"}
+              </Button>
             </View>
 
             {dayBillsDue.length === 0 && dayBillInstances.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <Text style={styles.emptyIcon}>📋</Text>
+                <Icon
+                  source="clipboard-text-outline"
+                  size={32}
+                  color={theme.colors.onSurfaceVariant}
+                />
                 <Text
+                  variant="bodyMedium"
                   style={[
                     styles.emptyText,
                     { color: theme.colors.onSurfaceVariant },
@@ -1008,19 +985,26 @@ export default function DashboardScreen() {
               >
                 {isArabic ? "سجل الشغل" : "Work Log"}
               </Text>
-              <Pressable onPress={() => router.push("/work")}>
-                <Text
-                  style={[styles.linkText, { color: theme.colors.primary }]}
-                >
-                  {isArabic ? "عرض الكل" : "View all"}
-                </Text>
-              </Pressable>
+              <Button
+                mode="text"
+                compact
+                onPress={() => router.push("/work")}
+                textColor={theme.colors.primary}
+                labelStyle={styles.linkText}
+              >
+                {isArabic ? "عرض الكل" : "View all"}
+              </Button>
             </View>
 
             {!dayWorkLog ? (
               <View style={styles.emptyWrap}>
-                <Text style={styles.emptyIcon}>💼</Text>
+                <Icon
+                  source="briefcase-outline"
+                  size={32}
+                  color={theme.colors.onSurfaceVariant}
+                />
                 <Text
+                  variant="bodyMedium"
                   style={[
                     styles.emptyText,
                     { color: theme.colors.onSurfaceVariant },
@@ -1110,8 +1094,13 @@ export default function DashboardScreen() {
 
           {dayTransactions.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyIcon}>💸</Text>
+              <Icon
+                source="cash-remove"
+                size={32}
+                color={theme.colors.onSurfaceVariant}
+              />
               <Text
+                variant="bodyMedium"
                 style={[
                   styles.emptyText,
                   { color: theme.colors.onSurfaceVariant },
@@ -1267,7 +1256,7 @@ export default function DashboardScreen() {
             style={{
               position: "absolute",
               right: 16,
-              bottom: tabBarHeight + Math.max(12, insets.bottom),
+              bottom: tabBarHeight + Math.max(30, insets.bottom),
               backgroundColor: theme.colors.primary,
               borderRadius: 18,
               elevation: 6,
@@ -1342,11 +1331,14 @@ const styles = StyleSheet.create({
   limitText: { fontSize: 12, fontWeight: "700" },
   limitSubText: { fontSize: 10, fontWeight: "600" },
   limitTrack: {
-    height: 6,
+    height: 8,
     borderRadius: 999,
     overflow: "hidden",
   },
-  limitFill: { height: "100%", borderRadius: 999, overflow: "hidden" },
+  limitProgress: {
+    height: 8,
+    borderRadius: 999,
+  },
 
   // ── Summary cards ──
   summaryRow: {
@@ -1450,6 +1442,5 @@ const styles = StyleSheet.create({
 
   // ── Empty states ──
   emptyWrap: { alignItems: "center", paddingVertical: 16, gap: 6 },
-  emptyIcon: { fontSize: 28 },
-  emptyText: { fontSize: 13, fontWeight: "600" },
+  emptyText: { fontWeight: "600" },
 });

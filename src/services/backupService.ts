@@ -3,7 +3,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
-import { getAll, runInTransaction, runQuery } from '@/src/db/client';
+import { getAll, getFirst, runInTransaction, runQuery } from '@/src/db/client';
 import { settingsService } from '@/src/services/settingsService';
 import type { BackupPayloadV1 } from '@/src/types/dto';
 
