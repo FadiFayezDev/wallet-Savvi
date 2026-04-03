@@ -5,7 +5,14 @@ import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleSheet,
+  View,
+} from "react-native";
 import {
   Button,
   Chip,
@@ -19,7 +26,7 @@ import {
   Text,
   useTheme,
 } from "react-native-paper";
-import type { MD3Colors, MD3Theme } from "react-native-paper";
+import type { MD3Theme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import InfiniteDayPicker from "@/src/components/FlatList/InfiniteDayPicker";
@@ -98,15 +105,24 @@ export default function DashboardScreen() {
     iconSecondary?: string;
     iconMuted?: string;
   };
-  type AppTheme = MD3Theme & { colors: MD3Colors & ExtraColors };
+  type AppTheme = MD3Theme & { colors: MD3Theme["colors"] & ExtraColors };
   const theme = useTheme<AppTheme>();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-  const headerHeight = useRef(new Animated.Value(310)).current;
-  const detailsOpacity = useRef(new Animated.Value(1)).current;
-  const detailsTranslate = useRef(new Animated.Value(0)).current;
-  const isCollapsedRef = useRef(false);
   const fabVisibleRef = useRef(true);
+
+  const HEADER_EXPANDED_H = 310;
+  const HEADER_COLLAPSED_H = 140;
+  const SCROLL_GAP_BELOW_HEADER = 20;
+  /** Past this offset → run collapse animation (state-based, not pixel-linked). */
+  const HEADER_COLLAPSE_THRESHOLD = 50;
+  /** Expand only when scrolled to the top (tolerate float / sub-pixel). */
+  const SCROLL_TOP_EPSILON = 1;
+
+  /** 0 = expanded, 1 = collapsed — animated with timing, not tied to scroll position. */
+  const headerCollapse = useRef(new Animated.Value(0)).current;
+  const headerAnimatingRef = useRef(false);
+  const headerCollapsedRef = useRef(false);
 
   const settings = useSettingsStore((s) => s.settings);
   const summary = useDashboardStore((s) => s.summary);
@@ -374,47 +390,65 @@ export default function DashboardScreen() {
     ],
   });
 
-  const collapseHeader = useCallback(() => {
-    Animated.parallel([
-      Animated.spring(headerHeight, {
-        toValue: 140,
-        useNativeDriver: false,
-        tension: 120,
-        friction: 14,
-      }),
-      Animated.timing(detailsOpacity, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: false,
-      }),
-      Animated.timing(detailsTranslate, {
-        toValue: -12,
-        duration: 180,
-        useNativeDriver: false,
-      }),
-    ]).start();
-  }, [headerHeight, detailsOpacity, detailsTranslate]);
+  const lastScrollYRef = useRef(0);
+  const headerTransitionLockRef = useRef(false);
 
-  const expandHeader = useCallback(() => {
-    Animated.parallel([
-      Animated.spring(headerHeight, {
-        toValue: 310,
-        useNativeDriver: false,
-        tension: 110,
-        friction: 12,
-      }),
-      Animated.timing(detailsOpacity, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: false,
-      }),
-      Animated.timing(detailsTranslate, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: false,
-      }),
-    ]).start();
-  }, [headerHeight, detailsOpacity, detailsTranslate]);
+  const onScrollFab = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      if (y > 120 && fabVisibleRef.current) {
+        fabVisibleRef.current = false;
+        setFabVisible(false);
+      }
+      if (y <= 40 && !fabVisibleRef.current) {
+        fabVisibleRef.current = true;
+        setFabVisible(true);
+      }
+    },
+    [],
+  );
+
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const lastY = lastScrollYRef.current;
+      onScrollFab(e);
+
+      // Expand at top: only while collapsed; lock prevents restarting timing every frame at y≈0.
+      if (
+        y <= SCROLL_TOP_EPSILON &&
+        headerCollapsedRef.current &&
+        !headerTransitionLockRef.current
+      ) {
+        headerTransitionLockRef.current = true;
+        headerCollapsedRef.current = false;
+        Animated.timing(headerCollapse, {
+          toValue: 0,
+          duration: 320,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start(() => {
+          headerTransitionLockRef.current = false;
+        });
+      } else if (
+        lastY <= HEADER_COLLAPSE_THRESHOLD &&
+        y > HEADER_COLLAPSE_THRESHOLD &&
+        !headerCollapsedRef.current
+      ) {
+        // Collapse: edge-triggered past threshold (no per-pixel binding). Can interrupt expand.
+        headerCollapsedRef.current = true;
+        Animated.timing(headerCollapse, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
+      }
+
+      lastScrollYRef.current = y;
+    },
+    [headerCollapse, onScrollFab],
+  );
 
   // ── Chips للـ breakdown ────────────────────────────────────
   const breakdownChips = [
@@ -430,317 +464,33 @@ export default function DashboardScreen() {
     },
   ];
 
+  const headerHeightAnim = headerCollapse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [HEADER_EXPANDED_H, HEADER_COLLAPSED_H],
+  });
+
+  const scrollPaddingTopAnim = headerCollapse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      HEADER_EXPANDED_H + SCROLL_GAP_BELOW_HEADER,
+      HEADER_COLLAPSED_H + SCROLL_GAP_BELOW_HEADER,
+    ],
+  });
+
   // ══════════════════════════════════════════════════════════
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      {/* ── HEADER ── */}
-      <Animated.View
-        style={{
-          opacity: headerAnim,
-          transform: [
-            {
-              translateY: headerAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-30, 0],
-              }),
-            },
-          ],
-        }}
-      >
-        <Animated.View
-          style={[
-            styles.headerWrap,
-            { height: headerHeight, backgroundColor: headerStart },
-          ]}
-        >
-          <LinearGradient
-            colors={[headerStart, headerMid, headerEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[
-              styles.header,
-              { paddingTop: 12, flex: 1, shadowColor: headerStart },
-            ]}
-          >
-            {/* شريط التحكم */}
-            <View style={styles.headerBar}>
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="menu"
-                  iconColor={headerIcon}
-                  size={20}
-                  mode="contained-tonal"
-                  containerColor={headerGlass}
-                  style={styles.iconBtn}
-                  onPress={() => {}}
-                />
-                <IconButton
-                  icon="chart-box-outline"
-                  iconColor={headerIcon}
-                  size={20}
-                  mode="contained-tonal"
-                  containerColor={headerGlass}
-                  style={styles.iconBtn}
-                  onPress={() => router.push("/reports/current")}
-                />
-              </View>
-
-              <Text style={[styles.balanceLabel, { color: headerTextMuted }]}>
-                {isArabic ? "إجمالي الرصيد" : "Total Balance"}
-              </Text>
-
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="receipt-text-outline"
-                  iconColor={headerIcon}
-                  size={20}
-                  mode="contained-tonal"
-                  containerColor={headerGlass}
-                  style={styles.iconBtn}
-                  onPress={() => router.push("/bills")}
-                />
-                <IconButton
-                  icon="briefcase-outline"
-                  iconColor={headerIcon}
-                  size={20}
-                  mode="contained-tonal"
-                  containerColor={headerGlass}
-                  style={styles.iconBtn}
-                  onPress={() => router.push("/work")}
-                />
-              </View>
-            </View>
-
-            {/* الرصيد */}
-            <Animated.View
-              style={{
-                opacity: balanceAnim,
-                transform: [
-                  {
-                    scale: balanceAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.85, 1],
-                    }),
-                  },
-                ],
-              }}
-            >
-              <AnimatedBalanceText
-                value={summary?.balance ?? 0}
-                locale={locale}
-                currency={currency}
-                resetKey={focusTick}
-                textStyle={[
-                  styles.balanceValue,
-                  {
-                    color: headerText,
-                    textShadowColor: withAlpha(headerText, 0.35),
-                  },
-                ]}
-              />
-            </Animated.View>
-
-            <Animated.View
-              style={{
-                opacity: detailsOpacity,
-                transform: [{ translateY: detailsTranslate }],
-              }}
-            >
-              {/* Limit Bar */}
-              {limitStatus.hasLimit && (
-                <View style={styles.limitWrap}>
-                  <View style={styles.limitRow}>
-                    <Text
-                      style={[styles.limitText, { color: headerTextStrong }]}
-                    >
-                      {limitStatus.isOver
-                        ? isArabic
-                          ? `⚠ تجاوزت الحد بـ ${formatMoney(limitStatus.overBy, locale, currency)}`
-                          : `⚠ Over limit by ${formatMoney(limitStatus.overBy, locale, currency)}`
-                        : isArabic
-                          ? `متبقي ${formatMoney(limitStatus.remaining ?? 0, locale, currency)}`
-                          : `${formatMoney(limitStatus.remaining ?? 0, locale, currency)} left`}
-                    </Text>
-                    <Text
-                      style={[styles.limitSubText, { color: headerTextMuted }]}
-                    >
-                      {formatMoney(limitStatus.spent, locale, currency)} /{" "}
-                      {formatMoney(limitStatus.limit, locale, currency)}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.limitTrack,
-                      { backgroundColor: headerBorder },
-                    ]}
-                  >
-                    <ProgressBar
-                      progress={limitStatus.progress}
-                      color={
-                        limitStatus.isOver
-                          ? theme.colors.error
-                          : (theme.colors.success ?? theme.colors.secondary)
-                      }
-                      style={styles.limitProgress}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* Day Picker */}
-              <InfiniteDayPicker
-                isArabic={isArabic}
-                theme={theme}
-                initialDate={selectedDate}
-                onDayChange={(date) => {
-                  const d = new Date(date);
-                  d.setHours(0, 0, 0, 0);
-                  setSelectedDate(d);
-                }}
-              />
-
-              {/* كروت الدخل / المصروفات */}
-              <View style={styles.summaryRow}>
-                {/* المصروفات */}
-                <View
-                  style={[styles.summaryCard, { borderColor: headerBorder }]}
-                >
-                  <LinearGradient
-                    colors={[
-                      withAlpha(theme.colors.error, 0.15),
-                      withAlpha(theme.colors.error, 0.05),
-                    ]}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <View
-                    style={[
-                      styles.summaryIcon,
-                      { backgroundColor: withAlpha(theme.colors.error, 0.2) },
-                    ]}
-                  >
-                    <IconButton
-                      icon="trending-down"
-                      iconColor={theme.colors.error}
-                      size={18}
-                      style={styles.noMargin}
-                    />
-                  </View>
-                  <View>
-                    <Text
-                      style={[
-                        styles.summaryCardLabel,
-                        { color: headerTextMuted },
-                      ]}
-                    >
-                      {isArabic ? "المصروفات" : "Expenses"}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryCardValue,
-                        { color: theme.colors.error },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {formatMoney(
-                        summary?.monthlyExpense ?? 0,
-                        locale,
-                        currency,
-                      )}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* الدخل */}
-                <View
-                  style={[styles.summaryCard, { borderColor: headerBorder }]}
-                >
-                  <LinearGradient
-                    colors={[
-                      withAlpha(
-                        theme.colors.success ?? theme.colors.secondary,
-                        0.15,
-                      ),
-                      withAlpha(
-                        theme.colors.success ?? theme.colors.secondary,
-                        0.05,
-                      ),
-                    ]}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <View
-                    style={[
-                      styles.summaryIcon,
-                      {
-                        backgroundColor: withAlpha(
-                          theme.colors.success ?? theme.colors.secondary,
-                          0.2,
-                        ),
-                      },
-                    ]}
-                  >
-                    <IconButton
-                      icon="trending-up"
-                      iconColor={theme.colors.success ?? theme.colors.secondary}
-                      size={18}
-                      style={styles.noMargin}
-                    />
-                  </View>
-                  <View>
-                    <Text
-                      style={[
-                        styles.summaryCardLabel,
-                        { color: headerTextMuted },
-                      ]}
-                    >
-                      {isArabic ? "الدخل" : "Income"}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryCardValue,
-                        {
-                          color: theme.colors.success ?? theme.colors.secondary,
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {formatMoney(
-                        summary?.monthlyIncome ?? 0,
-                        locale,
-                        currency,
-                      )}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Animated.View>
-          </LinearGradient>
-        </Animated.View>
-      </Animated.View>
-
-      {/* ── SCROLL CONTENT ── */}
+      {/* Full-screen scroll; paddingTop animates with headerCollapse (state), not scroll pixels — overlay header avoids flex reflow loops. */}
       <Animated.ScrollView
+        style={styles.scrollFill}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        onScroll={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          if (y > 20 && !isCollapsedRef.current) {
-            isCollapsedRef.current = true;
-            collapseHeader();
-          }
-          if (y <= 0 && isCollapsedRef.current) {
-            isCollapsedRef.current = false;
-            expandHeader();
-          }
-          if (y > 120 && fabVisibleRef.current) {
-            fabVisibleRef.current = false;
-            setFabVisible(false);
-          }
-          if (y <= 40 && !fabVisibleRef.current) {
-            fabVisibleRef.current = true;
-            setFabVisible(true);
-          }
-        }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: scrollPaddingTopAnim },
+        ]}
+        onScroll={onScroll}
         scrollEventThrottle={16}
+        bounces
       >
         {/* ── Daily Breakdown Card ── */}
         <Animated.View style={cardStyle(cardAnims[0])}>
@@ -1247,6 +997,300 @@ export default function DashboardScreen() {
         </View>
       </Animated.ScrollView>
 
+      {/* Header overlays scroll — height does not resize the ScrollView, avoiding scroll offset ↔ height feedback. */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.headerOverlay,
+          {
+            opacity: headerAnim,
+            transform: [
+              {
+                translateY: headerAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-30, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.headerWrap,
+            {
+              height: headerHeightAnim,
+              backgroundColor: headerStart,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[headerStart, headerMid, headerEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.header,
+              { paddingTop: 12, flex: 1, shadowColor: headerStart },
+            ]}
+          >
+            <View style={styles.headerBar}>
+              <View style={styles.headerActions}>
+                <IconButton
+                  icon="menu"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => {}}
+                />
+                <IconButton
+                  icon="chart-box-outline"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/reports/current")}
+                />
+              </View>
+
+              <Text style={[styles.balanceLabel, { color: headerTextMuted }]}>
+                {isArabic ? "إجمالي الرصيد" : "Total Balance"}
+              </Text>
+
+              <View style={styles.headerActions}>
+                <IconButton
+                  icon="receipt-text-outline"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/bills")}
+                />
+                <IconButton
+                  icon="briefcase-outline"
+                  iconColor={headerIcon}
+                  size={20}
+                  mode="contained-tonal"
+                  containerColor={headerGlass}
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/work")}
+                />
+              </View>
+            </View>
+
+            <Animated.View
+              style={{
+                opacity: balanceAnim,
+                transform: [
+                  {
+                    scale: balanceAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.85, 1],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <AnimatedBalanceText
+                value={summary?.balance ?? 0}
+                locale={locale}
+                currency={currency}
+                resetKey={focusTick}
+                textStyle={[
+                  styles.balanceValue,
+                  {
+                    color: headerText,
+                    textShadowColor: withAlpha(headerText, 0.35),
+                  },
+                ]}
+              />
+            </Animated.View>
+
+            <Animated.View
+              style={{
+                opacity: headerCollapse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0],
+                }),
+                transform: [
+                  {
+                    translateY: headerCollapse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -8],
+                    }),
+                  },
+                ],
+              }}
+            >
+              {limitStatus.hasLimit && (
+                <View style={styles.limitWrap}>
+                  <View style={styles.limitRow}>
+                    <Text
+                      style={[styles.limitText, { color: headerTextStrong }]}
+                    >
+                      {limitStatus.isOver
+                        ? isArabic
+                          ? `⚠ تجاوزت الحد بـ ${formatMoney(limitStatus.overBy, locale, currency)}`
+                          : `⚠ Over limit by ${formatMoney(limitStatus.overBy, locale, currency)}`
+                        : isArabic
+                          ? `متبقي ${formatMoney(limitStatus.remaining ?? 0, locale, currency)}`
+                          : `${formatMoney(limitStatus.remaining ?? 0, locale, currency)} left`}
+                    </Text>
+                    <Text
+                      style={[styles.limitSubText, { color: headerTextMuted }]}
+                    >
+                      {formatMoney(limitStatus.spent, locale, currency)} /{" "}
+                      {formatMoney(limitStatus.limit, locale, currency)}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.limitTrack,
+                      { backgroundColor: headerBorder },
+                    ]}
+                  >
+                    <ProgressBar
+                      progress={limitStatus.progress}
+                      color={
+                        limitStatus.isOver
+                          ? theme.colors.error
+                          : (theme.colors.success ?? theme.colors.secondary)
+                      }
+                      style={styles.limitProgress}
+                    />
+                  </View>
+                </View>
+              )}
+
+              <InfiniteDayPicker
+                isArabic={isArabic}
+                theme={theme}
+                initialDate={selectedDate}
+                onDayChange={(date) => {
+                  const d = new Date(date);
+                  d.setHours(0, 0, 0, 0);
+                  setSelectedDate(d);
+                }}
+              />
+
+              <View style={styles.summaryRow}>
+                <View
+                  style={[styles.summaryCard, { borderColor: headerBorder }]}
+                >
+                  <LinearGradient
+                    colors={[
+                      withAlpha(theme.colors.error, 0.15),
+                      withAlpha(theme.colors.error, 0.05),
+                    ]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View
+                    style={[
+                      styles.summaryIcon,
+                      { backgroundColor: withAlpha(theme.colors.error, 0.2) },
+                    ]}
+                  >
+                    <IconButton
+                      icon="trending-down"
+                      iconColor={theme.colors.error}
+                      size={18}
+                      style={styles.noMargin}
+                    />
+                  </View>
+                  <View>
+                    <Text
+                      style={[
+                        styles.summaryCardLabel,
+                        { color: headerTextMuted },
+                      ]}
+                    >
+                      {isArabic ? "المصروفات" : "Expenses"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.summaryCardValue,
+                        { color: theme.colors.error },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMoney(
+                        summary?.monthlyExpense ?? 0,
+                        locale,
+                        currency,
+                      )}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[styles.summaryCard, { borderColor: headerBorder }]}
+                >
+                  <LinearGradient
+                    colors={[
+                      withAlpha(
+                        theme.colors.success ?? theme.colors.secondary,
+                        0.15,
+                      ),
+                      withAlpha(
+                        theme.colors.success ?? theme.colors.secondary,
+                        0.05,
+                      ),
+                    ]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View
+                    style={[
+                      styles.summaryIcon,
+                      {
+                        backgroundColor: withAlpha(
+                          theme.colors.success ?? theme.colors.secondary,
+                          0.2,
+                        ),
+                      },
+                    ]}
+                  >
+                    <IconButton
+                      icon="trending-up"
+                      iconColor={theme.colors.success ?? theme.colors.secondary}
+                      size={18}
+                      style={styles.noMargin}
+                    />
+                  </View>
+                  <View>
+                    <Text
+                      style={[
+                        styles.summaryCardLabel,
+                        { color: headerTextMuted },
+                      ]}
+                    >
+                      {isArabic ? "الدخل" : "Income"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.summaryCardValue,
+                        {
+                          color: theme.colors.success ?? theme.colors.secondary,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMoney(
+                        summary?.monthlyIncome ?? 0,
+                        locale,
+                        currency,
+                      )}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Animated.View>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
+
       {/* ── FAB ── */}
       {isFocused && fabVisible && (
         <Portal>
@@ -1272,6 +1316,15 @@ export default function DashboardScreen() {
 // ── StyleSheet ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  scrollFill: { flex: 1 },
+  headerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 4,
+    elevation: 10,
+  },
 
   // ── Header ──
   headerWrap: {
@@ -1367,7 +1420,6 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 16,
     paddingBottom: 160,
-    paddingTop: 20,
   },
 
   // ── Cards ──

@@ -9,6 +9,9 @@ import type { BackupPayloadV1 } from '@/src/types/dto';
 
 const BACKUP_VERSION = 1 as const;
 
+/** INSERT column count for `palette_themes` (migration 007). Keep in sync with schema. */
+const PALETTE_THEME_COLUMN_COUNT = 92;
+
 const TABLES = [
   'accounts',
   'palette_themes',
@@ -352,7 +355,7 @@ export const backupService = {
               dark_header_text, dark_header_icon,
               dark_icon_primary, dark_icon_secondary, dark_icon_muted,
               created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+             VALUES (${Array.from({ length: PALETTE_THEME_COLUMN_COUNT }, () => "?").join(", ")});`,
             [
               row.id, row.name,
               row.light_primary, row.light_on_primary, row.light_primary_container, row.light_on_primary_container,

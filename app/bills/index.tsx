@@ -15,9 +15,9 @@ import { notificationService } from "@/src/services/notificationService";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
 import type { Account, Category } from "@/src/types/domain";
+import { confirmAction } from "@/src/utils/confirm";
 import { toMonthKey } from "@/src/utils/date";
 import { formatMoney } from "@/src/utils/money";
-import { confirmAction } from "@/src/utils/confirm";
 
 export default function BillsScreen() {
   const router = useRouter();
@@ -29,7 +29,9 @@ export default function BillsScreen() {
   const [billInstances, setBillInstances] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [billPayAccounts, setBillPayAccounts] = useState<Record<number, number | null>>({});
+  const [billPayAccounts, setBillPayAccounts] = useState<
+    Record<number, number | null>
+  >({});
   const [loading, setLoading] = useState(false);
 
   const [name, setName] = useState("");
@@ -44,7 +46,10 @@ export default function BillsScreen() {
   const currency = settings?.currencyCode ?? "EGP";
   const monthKey = toMonthKey(new Date());
 
-  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const categoryMap = useMemo(
+    () => new Map(categories.map((c) => [c.id, c])),
+    [categories],
+  );
   const defaultAccountId = useMemo(() => {
     const preferred = accounts.find((acc) => acc.isDefault)?.id;
     return preferred ?? accounts[0]?.id ?? null;
@@ -61,13 +66,14 @@ export default function BillsScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [categoryRows, allBills, pending, instances, accountRows] = await Promise.all([
-        categoryService.listCategories("expense"),
-        recurringBillService.getAllBills(true),
-        recurringBillService.getPendingBills(monthKey),
-        recurringBillService.listBillInstancesForMonth(monthKey),
-        accountService.listAccounts(),
-      ]);
+      const [categoryRows, allBills, pending, instances, accountRows] =
+        await Promise.all([
+          categoryService.listCategories("expense"),
+          recurringBillService.getAllBills(true),
+          recurringBillService.getPendingBills(monthKey),
+          recurringBillService.listBillInstancesForMonth(monthKey),
+          accountService.listAccounts(),
+        ]);
       setCategories(categoryRows);
       setBills(allBills);
       setPendingBills(pending);
@@ -160,14 +166,24 @@ export default function BillsScreen() {
     <MaterialScreen
       layout="stack"
       header={
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            marginBottom: 8,
+          }}
+        >
           <IconButton
             icon="arrow-left"
             iconColor={theme.colors.onSurface}
             onPress={() => router.back()}
             style={{ margin: 0 }}
           />
-          <PaperText variant="headlineSmall" style={{ color: theme.colors.onSurface, flex: 1 }}>
+          <PaperText
+            variant="headlineSmall"
+            style={{ color: theme.colors.onSurface, flex: 1 }}
+          >
             {locale === "ar" ? "الفواتير الدورية" : "Recurring Bills"}
           </PaperText>
         </View>
@@ -182,8 +198,17 @@ export default function BillsScreen() {
           padding: 16,
         }}
       >
-        <Text style={{ color: theme.colors.onSurface }} className="text-base font-black">
-          {editingId ? (locale === "ar" ? "تعديل فاتورة" : "Edit Bill") : (locale === "ar" ? "إضافة فاتورة" : "Add Bill")}
+        <Text
+          style={{ color: theme.colors.onSurface }}
+          className="text-base font-black"
+        >
+          {editingId
+            ? locale === "ar"
+              ? "تعديل فاتورة"
+              : "Edit Bill"
+            : locale === "ar"
+              ? "إضافة فاتورة"
+              : "Add Bill"}
         </Text>
         <Text style={{ marginTop: 6, color: theme.colors.onSurfaceVariant }}>
           {locale === "ar"
@@ -207,7 +232,11 @@ export default function BillsScreen() {
         <View style={{ marginTop: 8 }}>
           <CalculatorField
             label={locale === "ar" ? "المبلغ" : "Amount"}
-            hint={locale === "ar" ? "مطلوب. يمكنك استخدام الحاسبة." : "Required. Use calculator if needed."}
+            hint={
+              locale === "ar"
+                ? "مطلوب. يمكنك استخدام الحاسبة."
+                : "Required. Use calculator if needed."
+            }
             value={amount}
             onChange={setAmount}
             required
@@ -216,8 +245,16 @@ export default function BillsScreen() {
         </View>
         <View style={{ marginTop: 8 }}>
           <DatePickerField
-            label={locale === "ar" ? "يوم الاستحقاق (يتكرر شهرياً)" : "Due day (repeats monthly)"}
-            hint={locale === "ar" ? "اختر اليوم من التقويم" : "Pick a day from the calendar"}
+            label={
+              locale === "ar"
+                ? "يوم الاستحقاق (يتكرر شهرياً)"
+                : "Due day (repeats monthly)"
+            }
+            hint={
+              locale === "ar"
+                ? "اختر اليوم من التقويم"
+                : "Pick a day from the calendar"
+            }
             value={dueDate}
             onChange={(value) => {
               setDueDate(value);
@@ -235,11 +272,24 @@ export default function BillsScreen() {
         </View>
 
         <Text style={{ marginTop: 12, color: theme.colors.onSurfaceVariant }}>
-          {locale === "ar" ? "اختر الفئة (اختياري)" : "Pick category (optional)"}
+          Pick
+          {locale === "ar" ? "اختر الفئة (اختياري)" : " category (optional)"}
         </Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
           <Pressable
-            onPress={() => router.push({ pathname: "/categories/manage", params: { tab: "expense" } })}
+            onPress={() =>
+              router.push({
+                pathname: "/categories/manage",
+                params: { type: "expense" },
+              })
+            }
             style={{
               borderRadius: 100,
               paddingHorizontal: 12,
@@ -259,10 +309,20 @@ export default function BillsScreen() {
                 borderRadius: 100,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
-                backgroundColor: categoryId === category.id ? theme.colors.primary : theme.colors.surfaceVariant,
+                backgroundColor:
+                  categoryId === category.id
+                    ? theme.colors.primary
+                    : theme.colors.surfaceVariant,
               }}
             >
-              <Text style={{ color: categoryId === category.id ? theme.colors.onPrimary : theme.colors.onSurfaceVariant }}>
+              <Text
+                style={{
+                  color:
+                    categoryId === category.id
+                      ? theme.colors.onPrimary
+                      : theme.colors.onSurfaceVariant,
+                }}
+              >
                 {locale === "ar" ? category.nameAr : category.nameEn}
               </Text>
             </Pressable>
@@ -276,11 +336,25 @@ export default function BillsScreen() {
               borderRadius: 12,
               paddingVertical: 10,
               paddingHorizontal: 12,
-              backgroundColor: isActive ? theme.colors.secondaryContainer : theme.colors.surfaceVariant,
+              backgroundColor: isActive
+                ? theme.colors.secondaryContainer
+                : theme.colors.surfaceVariant,
             }}
           >
-            <Text style={{ color: isActive ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant }}>
-              {isActive ? (locale === "ar" ? "نشطة" : "Active") : (locale === "ar" ? "غير نشطة" : "Inactive")}
+            <Text
+              style={{
+                color: isActive
+                  ? theme.colors.onSecondaryContainer
+                  : theme.colors.onSurfaceVariant,
+              }}
+            >
+              {isActive
+                ? locale === "ar"
+                  ? "نشطة"
+                  : "Active"
+                : locale === "ar"
+                  ? "غير نشطة"
+                  : "Inactive"}
             </Text>
           </Pressable>
           <Pressable
@@ -292,8 +366,20 @@ export default function BillsScreen() {
               backgroundColor: theme.colors.primary,
             }}
           >
-            <Text style={{ textAlign: "center", fontWeight: "700", color: theme.colors.onPrimary }}>
-              {editingId ? (locale === "ar" ? "حفظ التعديل" : "Save") : (locale === "ar" ? "إضافة" : "Create")}
+            <Text
+              style={{
+                textAlign: "center",
+                fontWeight: "700",
+                color: theme.colors.onPrimary,
+              }}
+            >
+              {editingId
+                ? locale === "ar"
+                  ? "حفظ التعديل"
+                  : "Save"
+                : locale === "ar"
+                  ? "إضافة"
+                  : "Create"}
             </Text>
           </Pressable>
           {editingId ? (
@@ -316,18 +402,29 @@ export default function BillsScreen() {
 
       {/* Pending bills */}
       <View style={{ marginTop: 20 }}>
-        <Text style={{ color: theme.colors.onSurface }} className="text-lg font-black">
+        <Text
+          style={{ color: theme.colors.onSurface }}
+          className="text-lg font-black"
+        >
           {locale === "ar" ? `فواتير ${monthKey}` : `Pending ${monthKey}`}
         </Text>
         {loading ? (
-          <Text style={{ color: theme.colors.onSurfaceVariant }}>{locale === "ar" ? "تحميل..." : "Loading..."}</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>
+            {locale === "ar" ? "تحميل..." : "Loading..."}
+          </Text>
         ) : pendingBills.length === 0 ? (
-          <Text style={{ color: theme.colors.onSurfaceVariant }}>{locale === "ar" ? "لا توجد فواتير معلقة" : "No pending bills"}</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>
+            {locale === "ar" ? "لا توجد فواتير معلقة" : "No pending bills"}
+          </Text>
         ) : (
           <View style={{ marginTop: 8, gap: 8 }}>
             {pendingBills.map((bill) => {
-              const dueDate = recurringBillService.getDueDateForMonth(monthKey, bill.due_day);
-              const selectedAccountId = billPayAccounts[bill.id] ?? defaultAccountId;
+              const dueDate = recurringBillService.getDueDateForMonth(
+                monthKey,
+                bill.due_day,
+              );
+              const selectedAccountId =
+                billPayAccounts[bill.id] ?? defaultAccountId;
               return (
                 <View
                   key={bill.id}
@@ -339,10 +436,16 @@ export default function BillsScreen() {
                     padding: 12,
                   }}
                 >
-                  <Text style={{ color: theme.colors.onSurface }} className="font-bold">
+                  <Text
+                    style={{ color: theme.colors.onSurface }}
+                    className="font-bold"
+                  >
                     {bill.name}
                   </Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant }} className="text-[11px]">
+                  <Text
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                    className="text-[11px]"
+                  >
                     {formatMoney(bill.amount, locale, currency)} • {dueDate}
                   </Text>
                   {accountOptions.length > 0 ? (
@@ -353,7 +456,10 @@ export default function BillsScreen() {
                         value={selectedAccountId}
                         options={accountOptions}
                         onChange={(value) =>
-                          setBillPayAccounts((prev) => ({ ...prev, [bill.id]: value }))
+                          setBillPayAccounts((prev) => ({
+                            ...prev,
+                            [bill.id]: value,
+                          }))
                         }
                       />
                     </View>
@@ -361,7 +467,11 @@ export default function BillsScreen() {
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
                     <Pressable
                       onPress={async () => {
-                        await recurringBillService.applyBill(bill.id, dueDate, selectedAccountId);
+                        await recurringBillService.applyBill(
+                          bill.id,
+                          dueDate,
+                          selectedAccountId,
+                        );
                         await load();
                       }}
                       style={{
@@ -371,17 +481,24 @@ export default function BillsScreen() {
                         backgroundColor: theme.colors.primary,
                       }}
                     >
-                      <Text style={{ textAlign: "center", color: theme.colors.onPrimary }}>
+                      <Text
+                        style={{
+                          textAlign: "center",
+                          color: theme.colors.onPrimary,
+                        }}
+                      >
                         {locale === "ar" ? "دفع" : "Pay"}
                       </Text>
                     </Pressable>
                     <Pressable
                       onPress={async () => {
                         const ok = await confirmAction({
-                          title: locale === "ar" ? "تخطي الفاتورة؟" : "Skip bill?",
-                          message: locale === "ar"
-                            ? "سيتم تسجيل الفاتورة كمُتجاوزة ولن يتم خصمها."
-                            : "The bill will be marked as skipped and not charged.",
+                          title:
+                            locale === "ar" ? "تخطي الفاتورة؟" : "Skip bill?",
+                          message:
+                            locale === "ar"
+                              ? "سيتم تسجيل الفاتورة كمُتجاوزة ولن يتم خصمها."
+                              : "The bill will be marked as skipped and not charged.",
                           confirmText: locale === "ar" ? "تخطي" : "Skip",
                           cancelText: locale === "ar" ? "إلغاء" : "Cancel",
                           destructive: true,
@@ -397,7 +514,12 @@ export default function BillsScreen() {
                         backgroundColor: theme.colors.surfaceVariant,
                       }}
                     >
-                      <Text style={{ textAlign: "center", color: theme.colors.onSurfaceVariant }}>
+                      <Text
+                        style={{
+                          textAlign: "center",
+                          color: theme.colors.onSurfaceVariant,
+                        }}
+                      >
                         {locale === "ar" ? "تخطي" : "Skip"}
                       </Text>
                     </Pressable>
@@ -411,11 +533,16 @@ export default function BillsScreen() {
 
       {/* Bill instances */}
       <View style={{ marginTop: 20 }}>
-        <Text style={{ color: theme.colors.onSurface }} className="text-lg font-black">
+        <Text
+          style={{ color: theme.colors.onSurface }}
+          className="text-lg font-black"
+        >
           {locale === "ar" ? "سجل الفواتير" : "Bill History"}
         </Text>
         {billInstances.length === 0 ? (
-          <Text style={{ color: theme.colors.onSurfaceVariant }}>{locale === "ar" ? "لا يوجد سجل بعد" : "No history yet"}</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>
+            {locale === "ar" ? "لا يوجد سجل بعد" : "No history yet"}
+          </Text>
         ) : (
           <View style={{ marginTop: 8, gap: 8 }}>
             {billInstances.map((row) => (
@@ -440,11 +567,16 @@ export default function BillsScreen() {
 
       {/* All bills */}
       <View style={{ marginTop: 20, marginBottom: 40 }}>
-        <Text style={{ color: theme.colors.onSurface }} className="text-lg font-black">
+        <Text
+          style={{ color: theme.colors.onSurface }}
+          className="text-lg font-black"
+        >
           {locale === "ar" ? "كل الفواتير" : "All Bills"}
         </Text>
         {bills.length === 0 ? (
-          <Text style={{ color: theme.colors.onSurfaceVariant }}>{locale === "ar" ? "لا توجد فواتير" : "No bills yet"}</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>
+            {locale === "ar" ? "لا توجد فواتير" : "No bills yet"}
+          </Text>
         ) : (
           <View style={{ marginTop: 8, gap: 8 }}>
             {bills.map((bill) => {
@@ -461,34 +593,78 @@ export default function BillsScreen() {
                     padding: 12,
                   }}
                 >
-                  <Text style={{ color: theme.colors.onSurface }} className="font-bold">
+                  <Text
+                    style={{ color: theme.colors.onSurface }}
+                    className="font-bold"
+                  >
                     {bill.name}
                   </Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant }} className="text-[11px]">
-                    {formatMoney(bill.amount, locale, currency)} • {locale === "ar" ? "يوم" : "Day"} {bill.due_day}
+                  <Text
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                    className="text-[11px]"
+                  >
+                    {formatMoney(bill.amount, locale, currency)} •{" "}
+                    {locale === "ar" ? "يوم" : "Day"} {bill.due_day}
                   </Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant }} className="text-[11px]">
-                    {category ? (locale === "ar" ? category.nameAr : category.nameEn) : (locale === "ar" ? "بدون فئة" : "No category")}
+                  <Text
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                    className="text-[11px]"
+                  >
+                    {category
+                      ? locale === "ar"
+                        ? category.nameAr
+                        : category.nameEn
+                      : locale === "ar"
+                        ? "بدون فئة"
+                        : "No category"}
                   </Text>
-                  <Text style={{ color: bill.is_active ? theme.colors.primary : theme.colors.onSurfaceVariant }} className="text-[11px]">
-                    {bill.is_active ? (locale === "ar" ? "نشطة" : "Active") : (locale === "ar" ? "غير نشطة" : "Inactive")}
+                  <Text
+                    style={{
+                      color: bill.is_active
+                        ? theme.colors.primary
+                        : theme.colors.onSurfaceVariant,
+                    }}
+                    className="text-[11px]"
+                  >
+                    {bill.is_active
+                      ? locale === "ar"
+                        ? "نشطة"
+                        : "Active"
+                      : locale === "ar"
+                        ? "غير نشطة"
+                        : "Inactive"}
                   </Text>
                   <Pressable
                     onPress={async () => {
                       const goingActive = !bill.is_active;
                       const ok = await confirmAction({
-                        title: locale === "ar"
-                          ? (goingActive ? "تشغيل الفاتورة؟" : "إيقاف الفاتورة؟")
-                          : (goingActive ? "Activate bill?" : "Pause bill?"),
-                        message: locale === "ar"
-                          ? (goingActive ? "ستعود الفاتورة إلى الجدولة." : "سيتم إيقاف الفاتورة مؤقتا.")
-                          : (goingActive ? "The bill will be scheduled again." : "The bill will be paused."),
+                        title:
+                          locale === "ar"
+                            ? goingActive
+                              ? "تشغيل الفاتورة؟"
+                              : "إيقاف الفاتورة؟"
+                            : goingActive
+                              ? "Activate bill?"
+                              : "Pause bill?",
+                        message:
+                          locale === "ar"
+                            ? goingActive
+                              ? "ستعود الفاتورة إلى الجدولة."
+                              : "سيتم إيقاف الفاتورة مؤقتا."
+                            : goingActive
+                              ? "The bill will be scheduled again."
+                              : "The bill will be paused.",
                         confirmText: locale === "ar" ? "تأكيد" : "Confirm",
                         cancelText: locale === "ar" ? "إلغاء" : "Cancel",
                       });
                       if (!ok) return;
-                      await recurringBillService.toggleBillStatus(bill.id, !bill.is_active);
-                      notificationService.rescheduleAll().catch(() => undefined);
+                      await recurringBillService.toggleBillStatus(
+                        bill.id,
+                        !bill.is_active,
+                      );
+                      notificationService
+                        .rescheduleAll()
+                        .catch(() => undefined);
                       await load();
                     }}
                     style={{
@@ -496,12 +672,26 @@ export default function BillsScreen() {
                       borderRadius: 10,
                       paddingVertical: 6,
                       paddingHorizontal: 10,
-                      backgroundColor: bill.is_active ? theme.colors.surfaceVariant : theme.colors.secondaryContainer,
+                      backgroundColor: bill.is_active
+                        ? theme.colors.surfaceVariant
+                        : theme.colors.secondaryContainer,
                       alignSelf: "flex-start",
                     }}
                   >
-                    <Text style={{ color: bill.is_active ? theme.colors.onSurfaceVariant : theme.colors.onSecondaryContainer }}>
-                      {bill.is_active ? (locale === "ar" ? "إيقاف" : "Pause") : (locale === "ar" ? "تشغيل" : "Resume")}
+                    <Text
+                      style={{
+                        color: bill.is_active
+                          ? theme.colors.onSurfaceVariant
+                          : theme.colors.onSecondaryContainer,
+                      }}
+                    >
+                      {bill.is_active
+                        ? locale === "ar"
+                          ? "إيقاف"
+                          : "Pause"
+                        : locale === "ar"
+                          ? "تشغيل"
+                          : "Resume"}
                     </Text>
                   </Pressable>
                 </Pressable>

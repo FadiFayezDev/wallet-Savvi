@@ -1,8 +1,7 @@
 import 'react-native-paper';
 
-declare global {
-  namespace ReactNativePaper {
-    interface MD3Colors {
+declare module 'react-native-paper' {
+  export interface MD3Colors {
       success: string;
       onSuccess: string;
       successContainer: string;
@@ -23,6 +22,5 @@ declare global {
       iconPrimary: string;
       iconSecondary: string;
       iconMuted: string;
-    }
   }
 }
