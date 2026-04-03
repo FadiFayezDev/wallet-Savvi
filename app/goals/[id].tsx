@@ -5,10 +5,12 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
 
+import { ComboSelect } from '@/src/components/forms/ComboSelect';
 import { EmptyState } from '@/src/components/common/EmptyState';
+import { accountService } from '@/src/services/accountService';
 import { goalService } from '@/src/services/goalService';
 import { useSettingsStore } from '@/src/stores/settingsStore';
-import type { GoalDetails } from '@/src/types/domain';
+import type { Account, GoalDetails } from '@/src/types/domain';
 import { formatMoney } from '@/src/utils/money';
 import { confirmAction } from '@/src/utils/confirm';
 
@@ -23,6 +25,8 @@ export default function GoalDetailsScreen() {
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
 
   const locale = settings?.locale ?? 'ar';
   const currency = settings?.currencyCode ?? 'EGP';
@@ -36,6 +40,13 @@ export default function GoalDetailsScreen() {
     setTargetAmount(String(payload.goal.targetAmount));
   }, [goalId]);
 
+  const loadAccounts = useCallback(async () => {
+    const rows = await accountService.listAccounts();
+    setAccounts(rows);
+    const defaultAccount = rows.find((row) => row.isDefault);
+    setSelectedAccount(defaultAccount?.id ?? rows[0]?.id ?? null);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadDetails().catch(() => {
@@ -44,11 +55,22 @@ export default function GoalDetailsScreen() {
     }, [loadDetails]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      loadAccounts().catch(() => setAccounts([]));
+    }, [loadAccounts]),
+  );
+
   const progress = useMemo(() => {
     if (!details) return 0;
     if (details.goal.targetAmount <= 0) return 0;
     return Math.min(details.goal.savedAmount / details.goal.targetAmount, 1);
   }, [details]);
+
+  const accountOptions = useMemo(
+    () => accounts.map((a) => ({ value: a.id, label: a.name })),
+    [accounts]
+  );
 
   if (!details) {
     return (
@@ -64,10 +86,15 @@ export default function GoalDetailsScreen() {
       Alert.alert('Invalid transfer amount');
       return;
     }
+    if (!selectedAccount) {
+      Alert.alert('Select an account');
+      return;
+    }
     try {
       await goalService.transferToGoal({
         goalId,
         amount,
+        accountId: selectedAccount,
         occurredAt: new Date().toISOString(),
       });
       setTransferAmount('');
@@ -146,6 +173,17 @@ export default function GoalDetailsScreen() {
           className="mt-2 rounded-xl px-4 py-3"
           style={{ backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface }}
         />
+        <View className="mt-2">
+          <ComboSelect
+            value={selectedAccount}
+            options={accountOptions}
+            placeholder={isAr ? "اختر الحساب" : "Select Account"}
+            onChange={setSelectedAccount}
+            variant="filled"
+            triggerStyle={{ backgroundColor: theme.colors.surfaceVariant }}
+            triggerTextStyle={{ color: theme.colors.onSurface }}
+          />
+        </View>
         <Pressable onPress={onTransfer} className="mt-3 rounded-xl py-3" style={{ backgroundColor: theme.colors.success }}>
           <Text className="text-center font-semibold" style={{ color: theme.colors.onSuccess }}>
             {t('goals.transfer')}
