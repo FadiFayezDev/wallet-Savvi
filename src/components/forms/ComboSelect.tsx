@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, View } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { IconButton, List, Menu, Text, useTheme } from "react-native-paper";
 
 type ComboOption<T extends string | number> = {
@@ -143,7 +143,10 @@ export function ComboSelect<T extends string | number>({
     <View>
       {label ? (
         <>
-          <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+          <Text
+            variant="labelLarge"
+            style={{ color: theme.colors.onSurfaceVariant }}
+          >
             {label}
           </Text>
           <View style={{ height: 6 }} />
@@ -166,7 +169,9 @@ export function ComboSelect<T extends string | number>({
             variant="bodyLarge"
             style={[
               {
-                color: selectedLabel ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
+                color: selectedLabel
+                  ? theme.colors.onSurface
+                  : theme.colors.onSurfaceVariant,
                 fontWeight: "600",
               },
               triggerTextStyle,

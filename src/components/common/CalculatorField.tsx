@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useTheme } from "react-native-paper";
 
-import { CalculatorKeyboard, evaluateExpression } from "./CalculatorKeyboard";
 import { withAlpha } from "@/src/utils/colors";
+import { CalculatorKeyboard, evaluateExpression } from "./CalculatorKeyboard";
 
 type CalculatorFieldProps = {
   label: string;
@@ -35,13 +35,21 @@ export function CalculatorField({
 
   return (
     <View>
-      <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, fontWeight: "700" }}>
+      <Text
+        style={{
+          color: theme.colors.onSurfaceVariant,
+          fontSize: 12,
+          fontWeight: "700",
+        }}
+      >
         {label} {required ? (locale === "ar" ? "(مطلوب)" : "(Required)") : null}
       </Text>
       {hint ? (
         <>
           <View style={{ height: 6 }} />
-          <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 11 }}>{hint}</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 11 }}>
+            {hint}
+          </Text>
         </>
       ) : null}
       <Pressable
@@ -54,23 +62,54 @@ export function CalculatorField({
         }}
       >
         <Text style={{ color: theme.colors.onSurface, fontSize: 16 }}>
-          {value || (locale === "ar" ? "اضغط لإدخال المبلغ" : "Tap to enter amount")}
+          {value ||
+            (locale === "ar" ? "اضغط لإدخال المبلغ" : "Tap to enter amount")}
         </Text>
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setOpen(false)}
+      >
         <View
           style={{
             flex: 1,
-            backgroundColor: withAlpha(theme.colors.backdrop ?? theme.colors.scrim ?? theme.colors.onBackground, 0.6),
+            backgroundColor: withAlpha(
+              theme.colors.backdrop ??
+                theme.colors.scrim ??
+                theme.colors.onBackground,
+              0.6,
+            ),
             justifyContent: "flex-end",
           }}
         >
-          <View style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <Text style={{ color: theme.colors.onSurface, fontWeight: "800" }}>{label}</Text>
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 16,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{ color: theme.colors.onSurface, fontWeight: "800" }}
+              >
+                {label}
+              </Text>
               <Pressable onPress={() => setOpen(false)}>
-                <Text style={{ color: theme.colors.onSurfaceVariant }}>{locale === "ar" ? "إغلاق" : "Close"}</Text>
+                <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                  {locale === "ar" ? "إغلاق" : "Close"}
+                </Text>
               </Pressable>
             </View>
             <CalculatorKeyboard
@@ -96,7 +135,9 @@ export function CalculatorField({
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: theme.colors.onSurface, fontWeight: "700" }}>
+              <Text
+                style={{ color: theme.colors.onSurface, fontWeight: "700" }}
+              >
                 {locale === "ar" ? "إدراج الناتج" : "Insert result"}
               </Text>
             </Pressable>
