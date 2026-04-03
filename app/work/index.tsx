@@ -266,9 +266,10 @@ export default function WorkScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 40, gap: 16 }}
+      contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
+      <View style={{ gap: 16 }}>
       <LinearGradient
         colors={[
           theme.colors.headerGradientStart,
@@ -738,8 +739,7 @@ export default function WorkScreen() {
             )}
           </View>
         </View>
-      )}
-    </ScrollView>
+      )}      </View>    </ScrollView>
   );
 }
 

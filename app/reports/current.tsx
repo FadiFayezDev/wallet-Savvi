@@ -157,10 +157,11 @@ export default function CurrentMonthReport() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
-      contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 32, gap: 16 }}
+      contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
     >
-      <LinearGradient
+      <View style={{ gap: 16 }}>
+        <LinearGradient
         colors={[
           theme.colors.headerGradientStart,
           theme.colors.headerGradientMid,
@@ -421,12 +422,13 @@ export default function CurrentMonthReport() {
           ))}
         </View>
       </View>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { borderRadius: 28, padding: 18, gap: 12 },
+  hero: { borderRadius: 28, padding: 18 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   heroTitle: { fontSize: 20, fontWeight: "900" },
   heroSubtitle: { fontSize: 12 },

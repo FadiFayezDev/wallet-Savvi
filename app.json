@@ -27,8 +27,7 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.SCHEDULE_EXACT_ALARM"
       ],
-      "softwareKeyboardLayoutMode": "pan",
-      "gradleArguments": ["-PreactNativeArchitectures=arm64-v8a"]
+      "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
       "expo-router",

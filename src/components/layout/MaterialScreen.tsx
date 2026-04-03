@@ -46,15 +46,16 @@ export function MaterialScreen({
 }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  
-  // هنا التعديل: بنجيب الارتفاع بأمان
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   let tabBarH = 0;
   try {
     if (layout === "tab") {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
       tabBarH = useBottomTabBarHeight();
     }
   } catch (error) {
-    tabBarH = 0; 
+    tabBarH = 0;
   }
 
   const bottomPad =
@@ -64,55 +65,53 @@ export function MaterialScreen({
 
   const topPad = Math.max(12, insets.top > 0 ? 0 : 8);
 
-  const titleBlock =
-    header ?? (
-      <>
-        {title ? (
-          <Text
-            variant="headlineSmall"
-            style={{
-              color: theme.colors.onSurface,
-              marginBottom: subtitle ? 6 : MATERIAL_SECTION_GAP,
-            }}
-          >
-            {title}
-          </Text>
-        ) : null}
-        {subtitle ? (
-          <Text
-            variant="bodyMedium"
-            style={{
-              color: theme.colors.onSurfaceVariant,
-              marginBottom: MATERIAL_SECTION_GAP,
-            }}
-          >
-            {subtitle}
-          </Text>
-        ) : null}
-      </>
-    );
+  const titleBlock = header ?? (
+    <>
+      {title ? (
+        <Text
+          variant="headlineSmall"
+          style={{
+            color: theme.colors.onSurface,
+            marginBottom: subtitle ? 6 : MATERIAL_SECTION_GAP,
+          }}
+        >
+          {title}
+        </Text>
+      ) : null}
+      {subtitle ? (
+        <Text
+          variant="bodyMedium"
+          style={{
+            color: theme.colors.onSurfaceVariant,
+            marginBottom: MATERIAL_SECTION_GAP,
+          }}
+        >
+          {subtitle}
+        </Text>
+      ) : null}
+    </>
+  );
 
-  const baseContent: StyleProp<ViewStyle> = [
-    {
-      paddingHorizontal: MATERIAL_H,
-      paddingTop: topPad,
-      paddingBottom: bottomPad,
-      gap: MATERIAL_SECTION_GAP,
-    },
-    contentContainerStyle,
-  ];
+  const innerContent = (
+    <View>
+      {titleBlock}
+      {children}
+    </View>
+  );
 
-  // ... باقي الكود (الـ Return) زي ما هو
   if (scroll) {
     return (
       <ScrollView
         style={{ flex: 1, backgroundColor: theme.colors.background }}
-        contentContainerStyle={baseContent}
+        contentContainerStyle={{
+          paddingHorizontal: MATERIAL_H,
+          paddingTop: topPad,
+          paddingBottom: bottomPad,
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {titleBlock}
-        {children}
+        {innerContent}
       </ScrollView>
     );
   }
@@ -127,8 +126,7 @@ export function MaterialScreen({
         paddingBottom: bottomPad,
       }}
     >
-      {titleBlock}
-      {children}
+      {innerContent}
     </View>
   );
 }

@@ -140,11 +140,14 @@ export function ComboSelect<T extends string | number>({
         };
 
   return (
-    <View style={{ gap: 6 }}>
+    <View>
       {label ? (
-        <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-          {label}
-        </Text>
+        <>
+          <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+            {label}
+          </Text>
+          <View style={{ height: 6 }} />
+        </>
       ) : null}
       {menuWrapper(
         <Pressable

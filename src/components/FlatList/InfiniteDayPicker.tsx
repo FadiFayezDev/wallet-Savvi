@@ -1,23 +1,69 @@
-import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
   Animated,
-  StyleSheet,
   Dimensions,
+  FlatList,
   I18nManager,
-} from 'react-native';
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const ITEM_WIDTH    = Math.floor(SCREEN_WIDTH / 6); // 4 أيام ظاهرين في نفس الوقت
+/**
+ * عرض كل item أصغر بحيث يظهر 7 أيام تقريبًا في نفس الوقت.
+ * ده بيخلي الـ picker أكثر compact وأنيق.
+ */
+const ITEM_WIDTH = Math.floor(SCREEN_WIDTH / 7);
 const INITIAL_INDEX = 365;
-const TOTAL_DAYS    = 730;
+const TOTAL_DAYS = 730;
 
-const MONTH_NAMES_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-const MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+/**
+ * اختصارات الشهور — 3 حروف ثابتة دايمًا.
+ * ده هو قلب الحل: بغض النظر عن طول اسم الشهر (يناير vs سبتمبر)،
+ * الـ label هيكون دايمًا نفس العرض.
+ */
+const MONTH_SHORT_AR = [
+  "يَن", // يناير
+  "فَب", // فبراير
+  "مَر", // مارس
+  "أَب", // أبريل
+  "مَي", // مايو
+  "يُو", // يونيو
+  "يُل", // يوليو
+  "أُغ", // أغسطس
+  "سَب", // سبتمبر
+  "أُك", // أكتوبر
+  "نُو", // نوفمبر
+  "دِي", // ديسمبر
+];
+
+const MONTH_SHORT_EN = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** أسماء الأيام المختصرة للـ tooltip / accessibility لو احتجناها مستقبلًا */
+const DAY_NAMES_AR = ["أح", "إث", "ثل", "أر", "خم", "جم", "سب"];
+const DAY_NAMES_EN = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 function addDays(base: Date, n: number): Date {
   const d = new Date(base);
@@ -28,77 +74,125 @@ function addDays(base: Date, n: number): Date {
 function isSameDay(a: Date, b: Date) {
   return (
     a.getFullYear() === b.getFullYear() &&
-    a.getMonth()    === b.getMonth()    &&
-    a.getDate()     === b.getDate()
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
   );
 }
 
 // ── مكون اليوم الواحد ────────────────────────────────────────────────────────
 interface DayItemProps {
-  date:           Date;
-  isSelected:     boolean;
-  isToday:        boolean;
-  primaryColor:   string;
+  date: Date;
+  isSelected: boolean;
+  isToday: boolean;
+  primaryColor: string;
   onPrimaryColor: string;
   surfaceVariant: string;
   outlineVariant: string;
   onSurfaceColor: string;
-  monthNames:     string[];
-  onPress:        (date: Date) => void;
-  onLongPress?:   () => void;
+  monthShort: string[];
+  onPress: (date: Date) => void;
+  onLongPress?: () => void;
 }
 
 const DayItem = React.memo(
-  ({ date, isSelected, isToday, primaryColor, onPrimaryColor, surfaceVariant, outlineVariant, onSurfaceColor, monthNames, onPress, onLongPress }: DayItemProps) => {
-    const scaleAnim   = useRef(new Animated.Value(isSelected ? 1 : 0.88)).current;
-    const opacityAnim = useRef(new Animated.Value(isSelected ? 1 : 0.45)).current;
+  ({
+    date,
+    isSelected,
+    isToday,
+    primaryColor,
+    onPrimaryColor,
+    surfaceVariant,
+    outlineVariant,
+    onSurfaceColor,
+    monthShort,
+    onPress,
+    onLongPress,
+  }: DayItemProps) => {
+    const scaleAnim = useRef(new Animated.Value(isSelected ? 1 : 0.85)).current;
+    const opacityAnim = useRef(
+      new Animated.Value(isSelected ? 1 : 0.5),
+    ).current;
 
     useEffect(() => {
       Animated.parallel([
         Animated.spring(scaleAnim, {
-          toValue: isSelected ? 1 : 0.88,
+          toValue: isSelected ? 1 : 0.85,
           useNativeDriver: true,
-          tension: 200,
+          tension: 220,
           friction: 14,
         }),
         Animated.timing(opacityAnim, {
-          toValue: isSelected ? 1 : 0.45,
-          duration: 180,
+          toValue: isSelected ? 1 : 0.5,
+          duration: 160,
           useNativeDriver: true,
         }),
       ]).start();
     }, [isSelected]);
 
-    const label = `${date.getDate()} ${monthNames[date.getMonth()]}`;
+    /**
+     * Layout المحتوى:
+     * ┌──────────┐
+     * │    15    │  ← رقم اليوم كبير
+     * │   Sep    │  ← اختصار الشهر صغير ثابت (3 حروف دايمًا)
+     * └──────────┘
+     *
+     * بكده:
+     * - الـ item عنده عرض ثابت (ITEM_WIDTH)
+     * - الرقم دايمًا في المنتصف
+     * - الشهر دايمًا نفس الحجم، مش بيأثر على المحاذاة
+     */
+    const dayNum = date.getDate();
+    const monthLabel = monthShort[date.getMonth()];
 
     return (
       <Pressable
         onPress={() => onPress(date)}
         onLongPress={onLongPress}
         style={styles.dayWrapper}
-        hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+        hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
       >
         <Animated.View
           style={[
             styles.dayInner,
-            isSelected && [{ backgroundColor: primaryColor, shadowColor: primaryColor }, styles.selectedInner],
-            isToday && !isSelected && [styles.todayInner, { backgroundColor: surfaceVariant, borderColor: outlineVariant }],
+            isSelected && [
+              { backgroundColor: primaryColor, shadowColor: primaryColor },
+              styles.selectedInner,
+            ],
+            isToday &&
+              !isSelected && {
+                backgroundColor: surfaceVariant,
+                borderColor: outlineVariant,
+                borderWidth: 1,
+                borderRadius: 16,
+              },
             { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
           ]}
         >
+          {/* رقم اليوم */}
           <Text
             style={[
-              styles.dayLabel,
+              styles.dayNum,
               { color: onSurfaceColor },
-              isSelected && { color: onPrimaryColor, fontWeight: '800' },
-              isToday && !isSelected && { color: primaryColor, opacity: 1 },
+              isSelected && { color: onPrimaryColor },
+              isToday && !isSelected && { color: primaryColor },
             ]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
           >
-            {label}
+            {dayNum}
           </Text>
 
+          {/* اختصار الشهر — ثابت 3 حروف */}
+          <Text
+            style={[
+              styles.monthLabel,
+              { color: onSurfaceColor },
+              isSelected && { color: onPrimaryColor, opacity: 0.85 },
+              isToday && !isSelected && { color: primaryColor, opacity: 0.8 },
+            ]}
+          >
+            {monthLabel}
+          </Text>
+
+          {/* نقطة اليوم الحالي */}
           {isToday && !isSelected && (
             <View style={[styles.todayDot, { backgroundColor: primaryColor }]} />
           )}
@@ -107,33 +201,38 @@ const DayItem = React.memo(
     );
   },
   (prev, next) =>
-    prev.isSelected     === next.isSelected     &&
-    prev.isToday        === next.isToday        &&
-    prev.primaryColor   === next.primaryColor   &&
+    prev.isSelected === next.isSelected &&
+    prev.isToday === next.isToday &&
+    prev.primaryColor === next.primaryColor &&
     prev.onPrimaryColor === next.onPrimaryColor &&
     prev.surfaceVariant === next.surfaceVariant &&
     prev.onSurfaceColor === next.onSurfaceColor,
 );
 
+DayItem.displayName = "DayItem";
+
 // ── المكون الرئيسي ───────────────────────────────────────────────────────────
 interface InfiniteDayPickerProps {
-  isArabic?:    boolean;
-  theme?:       any; // MD3Theme من react-native-paper
+  isArabic?: boolean;
+  theme?: any;
   onDayChange?: (date: Date) => void;
   initialDate?: Date;
 }
 
 const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
-  isArabic    = false,
+  isArabic = false,
   theme,
   onDayChange,
   initialDate,
 }) => {
-  const primaryColor    = theme?.colors?.primary        ?? '#4593f2';
-  const onPrimaryColor  = theme?.colors?.onPrimary      ?? '#ffffff';
-  const surfaceVariant  = theme?.colors?.surfaceVariant ?? '#1F2937';
-  const outlineVariant  = theme?.colors?.outlineVariant ?? '#374151';
-  const onSurfaceColor  = theme?.colors?.onSurface      ?? '#ffffff';
+  const primaryColor = theme?.colors?.primary ?? "#4593f2";
+  const onPrimaryColor = theme?.colors?.onPrimary ?? "#ffffff";
+  const surfaceVariant = theme?.colors?.surfaceVariant ?? "#1F2937";
+  const outlineVariant = theme?.colors?.outlineVariant ?? "#374151";
+  const onSurfaceColor = theme?.colors?.onSurface ?? "#ffffff";
+
+  const monthShort = isArabic ? MONTH_SHORT_AR : MONTH_SHORT_EN;
+
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -146,17 +245,22 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
     return d;
   }, []);
 
-  const dates = useMemo<Date[]>(() =>
-    Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(baseDate, i - INITIAL_INDEX)),
-  [baseDate]);
+  const dates = useMemo<Date[]>(
+    () =>
+      Array.from({ length: TOTAL_DAYS }, (_, i) =>
+        addDays(baseDate, i - INITIAL_INDEX),
+      ),
+    [baseDate],
+  );
 
   const [selectedDate, setSelectedDate] = useState<Date>(baseDate);
   const flatListRef = useRef<FlatList>(null);
-  const monthNames  = isArabic ? MONTH_NAMES_AR : MONTH_NAMES_EN;
 
   useEffect(() => {
-    const diff      = Math.round((selectedDate.getTime() - baseDate.getTime()) / 86400000);
-    const idx       = INITIAL_INDEX + diff;
+    const diff = Math.round(
+      (selectedDate.getTime() - baseDate.getTime()) / 86400000,
+    );
+    const idx = INITIAL_INDEX + diff;
     const centerIdx = Math.max(0, idx - 1);
     setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: centerIdx, animated: false });
@@ -166,8 +270,8 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
   const resetToToday = useCallback(() => {
     setSelectedDate(today);
     onDayChange?.(today);
-    const diff      = Math.round((today.getTime() - baseDate.getTime()) / 86400000);
-    const idx       = INITIAL_INDEX + diff;
+    const diff = Math.round((today.getTime() - baseDate.getTime()) / 86400000);
+    const idx = INITIAL_INDEX + diff;
     const centerIdx = Math.max(0, idx - 1);
     flatListRef.current?.scrollToIndex({ index: centerIdx, animated: true });
   }, [baseDate, onDayChange, today]);
@@ -176,8 +280,10 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
     (date: Date) => {
       setSelectedDate(date);
       onDayChange?.(date);
-      const diff      = Math.round((date.getTime() - baseDate.getTime()) / 86400000);
-      const idx       = INITIAL_INDEX + diff;
+      const diff = Math.round(
+        (date.getTime() - baseDate.getTime()) / 86400000,
+      );
+      const idx = INITIAL_INDEX + diff;
       const centerIdx = Math.max(0, idx - 1);
       flatListRef.current?.scrollToIndex({ index: centerIdx, animated: true });
     },
@@ -195,17 +301,32 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
         surfaceVariant={surfaceVariant}
         outlineVariant={outlineVariant}
         onSurfaceColor={onSurfaceColor}
-        monthNames={monthNames}
+        monthShort={monthShort}
         onPress={handleDayPress}
         onLongPress={resetToToday}
       />
     ),
-    [selectedDate, today, primaryColor, onPrimaryColor, surfaceVariant, outlineVariant, onSurfaceColor, monthNames, handleDayPress, resetToToday],
+    [
+      selectedDate,
+      today,
+      primaryColor,
+      onPrimaryColor,
+      surfaceVariant,
+      outlineVariant,
+      onSurfaceColor,
+      monthShort,
+      handleDayPress,
+      resetToToday,
+    ],
   );
 
-  const keyExtractor  = useCallback((_: Date, i: number) => String(i), []);
+  const keyExtractor = useCallback((_: Date, i: number) => String(i), []);
   const getItemLayout = useCallback(
-    (_: any, index: number) => ({ length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index }),
+    (_: any, index: number) => ({
+      length: ITEM_WIDTH,
+      offset: ITEM_WIDTH * index,
+      index,
+    }),
     [],
   );
 
@@ -222,8 +343,8 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
         decelerationRate="fast"
         snapToInterval={ITEM_WIDTH}
         snapToAlignment="start"
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews
         inverted={isArabic && I18nManager.isRTL}
@@ -236,27 +357,32 @@ const InfiniteDayPicker: React.FC<InfiniteDayPickerProps> = ({
 // ── الأنماط ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
-    height: 56,
-    marginTop: 10,
+    /**
+     * أعلى قليلًا من النسخة القديمة (64 بدل 56) عشان نستوعب الـ stacked layout
+     * (رقم + شهر) بدون ضغط.
+     */
+    height: 64,
+    marginTop: 8,
     marginBottom: 4,
   },
   listContent: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: 4,
   },
   dayWrapper: {
     width: ITEM_WIDTH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
   },
   dayInner: {
-    width: '100%',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    paddingVertical: 7,
+    paddingHorizontal: 4,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 1,
   },
   selectedInner: {
     shadowOffset: { width: 0, height: 4 },
@@ -264,20 +390,32 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  todayInner: {
-    borderWidth: 1,
-    borderRadius: 20,
+
+  /** رقم اليوم — كبير وواضح */
+  dayNum: {
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 20,
+    textAlign: "center",
   },
-  dayLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+
+  /**
+   * اختصار الشهر — صغير تحت الرقم.
+   * ثابت 3 حروف دايمًا، ده بيمنع أي تفاوت في العرض بين الأشهر.
+   */
+  monthLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    lineHeight: 13,
+    textAlign: "center",
+    letterSpacing: 0.3,
   },
+
   todayDot: {
-    width: 4,
-    height: 4,
+    width: 3,
+    height: 3,
     borderRadius: 2,
-    marginTop: 3,
+    marginTop: 2,
   },
 });
 

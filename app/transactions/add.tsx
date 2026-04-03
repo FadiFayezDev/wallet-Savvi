@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -9,7 +11,7 @@ import {
 } from "react-native";
 
 import dayjs from "dayjs";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Calendar } from "react-native-calendars";
 import {
   IconButton,
@@ -40,31 +42,29 @@ export default function AddTransactionScreen() {
   const timeFormat = settings?.timeFormat ?? "24h";
   const isArabic = locale === "ar";
 
+  // ── States ──
   const [tab, setTab] = useState<AddTab>("income");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
-    [],
-  );
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
-
   const [fromAccount, setFromAccount] = useState<number | null>(null);
   const [toAccount, setToAccount] = useState<number | null>(null);
-
   const [date, setDate] = useState<Date>(new Date());
   const [dateVisible, setDateVisible] = useState(false);
 
+  // ── Effects & Callbacks (Logic Unchanged) ──
   useEffect(() => {
     if (
       params.tab === "income" ||
       params.tab === "expense" ||
       params.tab === "transfer"
     ) {
-      setTab(params.tab);
+      setTab(params.tab as AddTab);
     }
   }, [params.tab]);
 
@@ -81,7 +81,7 @@ export default function AddTransactionScreen() {
           prev ??
           rows.find((row) => row.id !== fallback)?.id ??
           rows[1]?.id ??
-          null,
+          null
       );
     } else {
       setToAccount((prev) => prev ?? fallback);
@@ -98,6 +98,14 @@ export default function AddTransactionScreen() {
     const rows = await transactionService.listTransactions({ limit: 10 });
     setRecentTransactions(rows);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (tab !== "transfer") {
+        loadCategories(tab);
+      }
+    }, [tab, loadCategories])
+  );
 
   useEffect(() => {
     loadAccounts().catch(() => setAccounts([]));
@@ -125,6 +133,7 @@ export default function AddTransactionScreen() {
     }
   }, [tab, fromAccount, toAccount, accounts]);
 
+  // ── Memos ──
   const dateLabel = useMemo(() => {
     const todayKey = dayjs().format("YYYY-MM-DD");
     const selectedKey = dayjs(date).format("YYYY-MM-DD");
@@ -133,34 +142,30 @@ export default function AddTransactionScreen() {
   }, [date, isArabic]);
 
   const accountOptions = useMemo(
-    () =>
-      accounts.map((account) => ({
-        value: account.id,
-        label: account.name,
-      })),
-    [accounts],
+    () => accounts.map((a) => ({ value: a.id, label: a.name })),
+    [accounts]
   );
 
   const categoryOptions = useMemo(
     () =>
-      categories.map((category) => ({
-        value: category.id,
-        label: locale === "ar" ? category.nameAr : category.nameEn,
+      categories.map((c) => ({
+        value: c.id,
+        label: locale === "ar" ? c.nameAr : c.nameEn,
       })),
-    [categories, locale],
+    [categories, locale]
   );
 
   const categoryMap = useMemo(() => {
     const map = new Map<number, string>();
-    categories.forEach((cat) => {
-      map.set(cat.id, locale === "ar" ? cat.nameAr : cat.nameEn);
-    });
+    categories.forEach((c) =>
+      map.set(c.id, locale === "ar" ? c.nameAr : c.nameEn)
+    );
     return map;
   }, [categories, locale]);
 
   const accountMap = useMemo(() => {
     const map = new Map<number, string>();
-    accounts.forEach((acc) => map.set(acc.id, acc.name));
+    accounts.forEach((a) => map.set(a.id, a.name));
     return map;
   }, [accounts]);
 
@@ -169,17 +174,17 @@ export default function AddTransactionScreen() {
       return recentTransactions.filter((tx) => tx.source === "transfer");
     }
     return recentTransactions.filter(
-      (tx) => tx.kind === tab && tx.source !== "transfer",
+      (tx) => tx.kind === tab && tx.source !== "transfer"
     );
   }, [recentTransactions, tab]);
 
+  // ── Handlers ──
   const handleSave = async () => {
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) {
       Alert.alert(isArabic ? "أدخل المبلغ" : "Enter amount");
       return;
     }
-
     try {
       if (tab === "transfer") {
         if (!fromAccount || !toAccount) {
@@ -211,7 +216,6 @@ export default function AddTransactionScreen() {
           occurredAt: date.toISOString(),
         });
       }
-
       setAmount("");
       setNote("");
       await loadRecent();
@@ -221,94 +225,99 @@ export default function AddTransactionScreen() {
     }
   };
 
-  const inputTextStyle = {
-    color: theme.colors.onSurface,
-    fontWeight: "700" as const,
-    paddingVertical: 6,
-    minWidth: 160,
-    textAlign: isArabic ? ("right" as const) : ("left" as const),
-  };
-
-  const rowLabelStyle = {
-    color: theme.colors.onSurfaceVariant,
-    fontSize: 14,
-    fontWeight: "600" as const,
-  };
-
-  const rowDivider = {
-    height: 1,
-    backgroundColor: theme.colors.outlineVariant,
-    marginTop: 12,
-  };
-
   const timePattern = timeFormat === "24h" ? "HH:mm" : "hh:mm A";
+  const infoColor = (theme.colors as any).info ?? theme.colors.primary;
+  const successColor = (theme.colors as any).success ?? theme.colors.secondary;
+
+  // ── RowField (NativeWind Implementation) ──
+  const RowField = ({
+    label,
+    children,
+  }: {
+    label: string;
+    children: React.ReactNode;
+  }) => (
+    <View className="mb-1">
+      <View
+        className={`flex-row items-center gap-4 ${
+          isArabic ? "flex-row-reverse" : ""
+        }`}
+      >
+        <Text
+          className="text-sm font-semibold"
+          style={{ width: 90, color: theme.colors.onSurfaceVariant }}
+        >
+          {label}
+        </Text>
+        <View className="flex-1">{children}</View>
+      </View>
+      <View
+        className="h-[1px] mt-3"
+        style={{ backgroundColor: theme.colors.outlineVariant }}
+      />
+    </View>
+  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+      {/* ── Header ── */}
       <View
-        style={{
-          paddingHorizontal: 12,
-          paddingTop: 10,
-          paddingBottom: 6,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
+        className={`flex-row items-center justify-between px-3 pt-3 pb-2 ${
+          isArabic ? "flex-row-reverse" : ""
+        }`}
       >
         <Pressable onPress={() => router.back()}>
           <IconButton
             icon={isArabic ? "arrow-right" : "arrow-left"}
             size={22}
             iconColor={theme.colors.onSurface}
-            style={{ margin: 0 }}
+            className="m-0"
           />
         </Pressable>
+
         <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "800",
-            color: theme.colors.onSurface,
-          }}
+          className="text-lg font-extrabold"
+          style={{ color: theme.colors.onSurface }}
         >
           {tab === "income"
-            ? isArabic
-              ? "دخل"
-              : "Income"
+            ? isArabic ? "دخل" : "Income"
             : tab === "expense"
-              ? isArabic
-                ? "مصروف"
-                : "Expense"
-              : isArabic
-                ? "تحويل"
-                : "Transfer"}
+            ? isArabic ? "مصروف" : "Expense"
+            : isArabic ? "تحويل" : "Transfer"}
         </Text>
+
         <IconButton
           icon="cog-outline"
           size={22}
           iconColor={theme.colors.primary}
-          style={{ margin: 0 }}
+          className="m-0"
           onPress={() => router.push("/settings")}
         />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
+      {/* ── Scrollable Body ── */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+        >
+        {/* ── Form Card ── */}
         <View
+          className="rounded-[24px] px-4 py-3 gap-4 border"
           style={{
-            borderRadius: 24,
             backgroundColor: theme.colors.surface,
-            borderWidth: 1,
             borderColor: theme.colors.outlineVariant,
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            gap: 16,
           }}
         >
+          {/* Tab Switcher */}
           <SegmentedButtons
             value={tab}
-            onValueChange={(value) => setTab(value as AddTab)}
+            onValueChange={(v) => setTab(v as AddTab)}
             buttons={[
               { value: "income", label: isArabic ? "دخل" : "Income" },
               { value: "expense", label: isArabic ? "مصروف" : "Expense" },
@@ -320,283 +329,178 @@ export default function AddTransactionScreen() {
             }}
           />
 
+          {/* ── Dynamic Form Fields ── */}
           {tab === "transfer" ? (
             <>
-              <View>
-                <View
+              <RowField label={isArabic ? "المبلغ" : "Amount"}>
+                <TextInput
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholder={
+                    isArabic ? `مثال ${currency} 8790` : `${currency} Ex. 8790`
+                  }
+                  keyboardType="decimal-pad"
+                  className={`text-sm font-bold py-1.5`}
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    color: theme.colors.onSurface,
+                    textAlign: isArabic ? "right" : "left",
                   }}
-                >
-                  <Text style={rowLabelStyle}>
-                    {isArabic ? "المبلغ" : "Amount"}
-                  </Text>
-                  <TextInput
-                    value={amount}
-                    onChangeText={setAmount}
-                    placeholder={
-                      isArabic
-                        ? `مثال ${currency} 8790`
-                        : `${currency} Ex. 8790`
-                    }
-                    keyboardType="decimal-pad"
-                    style={inputTextStyle}
-                    placeholderTextColor={theme.colors.onSurfaceVariant}
-                  />
-                </View>
-                <View style={rowDivider} />
-              </View>
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                />
+              </RowField>
 
-              <View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Text style={rowLabelStyle}>{isArabic ? "من" : "From"}</Text>
-                  <ComboSelect
-                    value={fromAccount}
-                    options={accountOptions}
-                    placeholder={isArabic ? "اختر" : "Select"}
-                    onChange={(value) => setFromAccount(value)}
-                    variant="underline"
-                    triggerStyle={{ minWidth: 180 }}
-                    triggerTextStyle={{
-                      textAlign: isArabic ? "right" : "left",
-                    }}
-                  />
-                </View>
-                <View style={rowDivider} />
-              </View>
+              <RowField label={isArabic ? "من" : "From"}>
+                <ComboSelect
+                  value={fromAccount}
+                  options={accountOptions}
+                  placeholder={isArabic ? "اختر" : "Select"}
+                  onChange={setFromAccount}
+                  variant="underline"
+                  triggerStyle={{ flex: 1 }}
+                  triggerTextStyle={{ textAlign: isArabic ? "right" : "left" }}
+                />
+              </RowField>
 
-              <View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Text style={rowLabelStyle}>{isArabic ? "إلى" : "To"}</Text>
-                  <ComboSelect
-                    value={toAccount}
-                    options={accountOptions}
-                    placeholder={isArabic ? "اختر" : "Select"}
-                    onChange={(value) => setToAccount(value)}
-                    variant="underline"
-                    triggerStyle={{ minWidth: 180 }}
-                    triggerTextStyle={{
-                      textAlign: isArabic ? "right" : "left",
-                    }}
-                  />
-                </View>
-                <View style={rowDivider} />
-              </View>
+              <RowField label={isArabic ? "إلى" : "To"}>
+                <ComboSelect
+                  value={toAccount}
+                  options={accountOptions}
+                  placeholder={isArabic ? "اختر" : "Select"}
+                  onChange={setToAccount}
+                  variant="underline"
+                  triggerStyle={{ flex: 1 }}
+                  triggerTextStyle={{ textAlign: isArabic ? "right" : "left" }}
+                />
+              </RowField>
             </>
           ) : (
             <>
               {/* Category */}
-              <View>
+              <RowField label={isArabic ? "الفئة" : "Category"}>
                 <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
+                  className={`flex-row items-center ${
+                    isArabic ? "flex-row-reverse" : ""
+                  }`}
                 >
-                  <Text style={rowLabelStyle}>
-                    {isArabic ? "الفئة" : "Category"}
-                  </Text>
-
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <ComboSelect
-                      value={selectedCategory}
-                      options={categoryOptions}
-                      placeholder={isArabic ? "اختر" : "Select"}
-                      onChange={(value) => setSelectedCategory(value)}
-                      variant="underline"
-                      triggerStyle={{ minWidth: 160 }}
-                      triggerTextStyle={{
-                        textAlign: isArabic ? "right" : "left",
-                      }}
-                    />
-                    <IconButton
-                      icon="plus-circle-outline"
-                      size={20}
-                      iconColor={theme.colors.primary}
-                      style={{ margin: 0, marginLeft: 2 }}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/categories/manage",
-                          params: { type: tab },
-                        })
-                      }
-                    />
-                  </View>
-                </View>
-                <View style={rowDivider} />
-              </View>
-              <View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Text style={rowLabelStyle}>
-                    {isArabic ? "المبلغ" : "Amount"}
-                  </Text>
-                  <TextInput
-                    value={amount}
-                    onChangeText={setAmount}
-                    placeholder={
-                      isArabic
-                        ? `مثال ${currency} 8790`
-                        : `${currency} Ex. 8790`
+                  <ComboSelect
+                    value={selectedCategory}
+                    options={categoryOptions}
+                    placeholder={isArabic ? "اختر" : "Select"}
+                    onChange={setSelectedCategory}
+                    variant="underline"
+                    triggerStyle={{ flex: 1 }}
+                    triggerTextStyle={{ textAlign: isArabic ? "right" : "left" }}
+                  />
+                  <IconButton
+                    icon="plus-circle-outline"
+                    size={20}
+                    iconColor={theme.colors.primary}
+                    className="m-0 ml-0.5"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/categories/manage",
+                        params: { type: tab },
+                      })
                     }
-                    keyboardType="decimal-pad"
-                    style={inputTextStyle}
-                    placeholderTextColor={theme.colors.onSurfaceVariant}
                   />
                 </View>
-                <View style={rowDivider} />
-              </View>
+              </RowField>
+
+              {/* Amount */}
+              <RowField label={isArabic ? "المبلغ" : "Amount"}>
+                <TextInput
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholder={
+                    isArabic ? `مثال ${currency} 8790` : `${currency} Ex. 8790`
+                  }
+                  keyboardType="decimal-pad"
+                  className={`text-sm font-bold py-1.5`}
+                  style={{
+                    color: theme.colors.onSurface,
+                    textAlign: isArabic ? "right" : "left",
+                  }}
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                />
+              </RowField>
             </>
           )}
 
-          <View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
+          {/* Date */}
+          <RowField label={isArabic ? "التاريخ" : "Date"}>
+            <Pressable
+              onPress={() => setDateVisible(true)}
+              className={`flex-row items-center gap-1.5 ${
+                isArabic ? "flex-row-reverse" : ""
+              }`}
             >
-              <Text style={rowLabelStyle}>{isArabic ? "التاريخ" : "Date"}</Text>
-              <Pressable
-                onPress={() => setDateVisible(true)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              <IconButton
+                icon="calendar"
+                size={18}
+                iconColor={theme.colors.primary}
+                className="m-0"
+              />
+              <Text
+                className="font-bold"
+                style={{ color: theme.colors.primary }}
               >
-                <IconButton
-                  icon="calendar"
-                  size={18}
-                  iconColor={theme.colors.primary}
-                  style={{ margin: 0 }}
-                />
-                <Text
-                  style={{ color: theme.colors.primary, fontWeight: "700" }}
-                >
-                  {dateLabel}
-                </Text>
-              </Pressable>
-            </View>
-            <View style={rowDivider} />
-          </View>
+                {dateLabel}
+              </Text>
+            </Pressable>
+          </RowField>
 
-          {tab !== "transfer" ? (
-            <View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text style={rowLabelStyle}>
-                  {isArabic ? "الحساب" : "Account"}
-                </Text>
-                <ComboSelect
-                  value={selectedAccount}
-                  options={accountOptions}
-                  placeholder={isArabic ? "اختر" : "Select"}
-                  onChange={(value) => setSelectedAccount(value)}
-                  variant="underline"
-                  triggerStyle={{ minWidth: 180 }}
-                  triggerTextStyle={{ textAlign: isArabic ? "right" : "left" }}
-                />
-              </View>
-              <View style={rowDivider} />
-            </View>
-          ) : null}
-
-          {tab === "transfer" ? (
-            <View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text style={rowLabelStyle}>
-                  {isArabic ? "ملاحظة" : "Note"}
-                </Text>
-                <TextInput
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder={
-                    isArabic ? "ملاحظات التحويل" : "Ex. Transaction Notes"
-                  }
-                  style={inputTextStyle}
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={rowDivider} />
-            </View>
-          ) : (
-            <View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text style={rowLabelStyle}>
-                  {isArabic ? "ملاحظة" : "Note"}
-                </Text>
-                <TextInput
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder={
-                    isArabic ? "ملاحظات العملية" : "Ex. Transaction Notes"
-                  }
-                  style={inputTextStyle}
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={rowDivider} />
-            </View>
+          {/* Account (income / expense only) */}
+          {tab !== "transfer" && (
+            <RowField label={isArabic ? "الحساب" : "Account"}>
+              <ComboSelect
+                value={selectedAccount}
+                options={accountOptions}
+                placeholder={isArabic ? "اختر" : "Select"}
+                onChange={setSelectedAccount}
+                variant="underline"
+                triggerStyle={{ flex: 1 }}
+                triggerTextStyle={{ textAlign: isArabic ? "right" : "left" }}
+              />
+            </RowField>
           )}
 
+          {/* Note */}
+          <RowField label={isArabic ? "ملاحظة" : "Note"}>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder={
+                tab === "transfer"
+                  ? isArabic ? "ملاحظات التحويل" : "Ex. Transaction Notes"
+                  : isArabic ? "ملاحظات العملية" : "Ex. Transaction Notes"
+              }
+              className={`text-sm font-bold py-1.5`}
+              style={{
+                color: theme.colors.onSurface,
+                textAlign: isArabic ? "right" : "left",
+              }}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+            />
+          </RowField>
+
+          {/* Save Button */}
           <Pressable
             onPress={handleSave}
-            style={{
-              borderRadius: 26,
-              backgroundColor: theme.colors.primary,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            className="rounded-[26px] py-3.5 items-center active:opacity-70"
+            style={{ backgroundColor: theme.colors.primary }}
           >
             <Text
-              style={{
-                color: theme.colors.onPrimary,
-                fontWeight: "800",
-                fontSize: 16,
-              }}
+              className="text-base font-extrabold"
+              style={{ color: theme.colors.onPrimary }}
             >
               {isArabic ? "حفظ" : "Save"}
             </Text>
           </Pressable>
         </View>
 
-        {filteredRecent.length > 0 ? (
-          <View style={{ marginTop: 16, gap: 12 }}>
+        {/* ── Recent Transactions ── */}
+        {filteredRecent.length > 0 && (
+          <View className="mt-4 gap-3">
             {filteredRecent.map((tx) => {
               const isTransfer = tx.source === "transfer";
               const isIncome = tx.signedAmount >= 0;
@@ -607,125 +511,91 @@ export default function AddTransactionScreen() {
                 ? accountMap.get(tx.accountId)
                 : null;
               const transferLabel = isIncome
-                ? isArabic
-                  ? "تحويل وارد"
-                  : "Transfer in"
-                : isArabic
-                  ? "تحويل صادر"
-                  : "Transfer out";
+                ? isArabic ? "تحويل وارد" : "Transfer in"
+                : isArabic ? "تحويل صادر" : "Transfer out";
+
               const title =
                 tx.note ||
                 (isTransfer
                   ? transferLabel
                   : categoryLabel ||
                     (isIncome
-                      ? isArabic
-                        ? "دخل"
-                        : "Income"
-                      : isArabic
-                        ? "مصروف"
-                        : "Expense"));
+                      ? isArabic ? "دخل" : "Income"
+                      : isArabic ? "مصروف" : "Expense"));
+
               const subtitleParts = [
                 isTransfer
                   ? accountLabel
                     ? isIncome
-                      ? isArabic
-                        ? `إلى ${accountLabel}`
-                        : `To ${accountLabel}`
-                      : isArabic
-                        ? `من ${accountLabel}`
-                        : `From ${accountLabel}`
+                      ? isArabic ? `إلى ${accountLabel}` : `To ${accountLabel}`
+                      : isArabic ? `من ${accountLabel}` : `From ${accountLabel}`
                     : null
                   : accountLabel,
                 dayjs(tx.occurredAt).format(timePattern),
               ].filter(Boolean);
-              const infoColor =
-                (theme.colors as any).info ?? theme.colors.primary;
-              const successColor =
-                (theme.colors as any).success ?? theme.colors.secondary;
+
+              const dotColor = isTransfer
+                ? infoColor
+                : isIncome
+                ? successColor
+                : theme.colors.error;
+
               return (
                 <View
                   key={tx.id}
+                  className={`rounded-[20px] p-3.5 border flex-row items-center justify-between ${
+                    isArabic ? "flex-row-reverse" : ""
+                  }`}
                   style={{
-                    borderRadius: 20,
                     backgroundColor: theme.colors.surface,
-                    borderWidth: 1,
                     borderColor: theme.colors.outlineVariant,
-                    padding: 14,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
                   }}
                 >
                   <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
+                    className={`flex-row items-center gap-3 ${
+                      isArabic ? "flex-row-reverse" : ""
+                    }`}
                   >
                     <View
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 17,
-                        backgroundColor: withAlpha(
-                          isTransfer
-                            ? infoColor
-                            : isIncome
-                              ? successColor
-                              : theme.colors.error,
-                          0.12,
-                        ),
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      className="w-[34px] h-[34px] rounded-full items-center justify-center"
+                      style={{ backgroundColor: withAlpha(dotColor, 0.12) }}
                     >
                       <IconButton
                         icon={
                           isTransfer
                             ? "swap-horizontal"
                             : isIncome
-                              ? "arrow-up"
-                              : "arrow-down"
+                            ? "arrow-up"
+                            : "arrow-down"
                         }
                         size={18}
-                        iconColor={
-                          isTransfer
-                            ? infoColor
-                            : isIncome
-                              ? successColor
-                              : theme.colors.error
-                        }
-                        style={{ margin: 0 }}
+                        iconColor={dotColor}
+                        className="m-0"
                       />
                     </View>
                     <View>
                       <Text
-                        style={{
-                          color: theme.colors.onSurface,
-                          fontWeight: "700",
-                        }}
+                        className={`font-bold ${isArabic ? "text-right" : "text-left"}`}
+                        style={{ color: theme.colors.onSurface }}
                       >
                         {title}
                       </Text>
-                      {subtitleParts.length > 0 ? (
+                      {subtitleParts.length > 0 && (
                         <Text
-                          style={{
-                            color: theme.colors.onSurfaceVariant,
-                            fontSize: 12,
-                          }}
+                          className={`text-[12px] ${isArabic ? "text-right" : "text-left"}`}
+                          style={{ color: theme.colors.onSurfaceVariant }}
                         >
                           {subtitleParts.join(" • ")}
                         </Text>
-                      ) : null}
+                      )}
                     </View>
                   </View>
-                  <View style={{ alignItems: "flex-end", gap: 6 }}>
+
+                  <View className="items-end gap-1.5">
                     <Text
+                      className="font-extrabold"
                       style={{
                         color: isIncome ? successColor : theme.colors.error,
-                        fontWeight: "800",
                       }}
                     >
                       {formatMoney(tx.signedAmount, locale, currency, true)}
@@ -742,7 +612,7 @@ export default function AddTransactionScreen() {
                         icon="pencil"
                         size={18}
                         iconColor={theme.colors.primary}
-                        style={{ margin: 0 }}
+                        className="m-0"
                       />
                     </Pressable>
                   </View>
@@ -750,9 +620,9 @@ export default function AddTransactionScreen() {
               );
             })}
           </View>
-        ) : null}
-      </ScrollView>
-
+        )}
+      </ScrollView>      </KeyboardAvoidingView>
+      {/* ── Calendar Modal ── */}
       <Portal>
         <Modal
           visible={dateVisible}

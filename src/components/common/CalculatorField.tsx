@@ -34,11 +34,16 @@ export function CalculatorField({
   const preview = useMemo(() => evaluateExpression(expression), [expression]);
 
   return (
-    <View style={{ gap: 6 }}>
+    <View>
       <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, fontWeight: "700" }}>
         {label} {required ? (locale === "ar" ? "(مطلوب)" : "(Required)") : null}
       </Text>
-      {hint ? <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 11 }}>{hint}</Text> : null}
+      {hint ? (
+        <>
+          <View style={{ height: 6 }} />
+          <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 11 }}>{hint}</Text>
+        </>
+      ) : null}
       <Pressable
         onPress={() => setOpen(true)}
         style={{
