@@ -223,7 +223,10 @@ export function TransactionForm({
 
       <Pressable
         onPress={() =>
-          router.push({ pathname: "/categories/manage", params: { type: kind } })
+          router.push({
+            pathname: "/categories/manage",
+            params: { type: kind },
+          })
         }
         style={{
           alignSelf: "flex-start",

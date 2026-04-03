@@ -639,8 +639,10 @@ export default function AddTransactionScreen() {
                   : accountLabel,
                 dayjs(tx.occurredAt).format(timePattern),
               ].filter(Boolean);
-              const infoColor = (theme.colors as any).info ?? theme.colors.primary;
-              const successColor = (theme.colors as any).success ?? theme.colors.secondary;
+              const infoColor =
+                (theme.colors as any).info ?? theme.colors.primary;
+              const successColor =
+                (theme.colors as any).success ?? theme.colors.secondary;
               return (
                 <View
                   key={tx.id}
@@ -655,7 +657,6 @@ export default function AddTransactionScreen() {
                     justifyContent: "space-between",
                   }}
                 >
-
                   <View
                     style={{
                       flexDirection: "row",
@@ -723,9 +724,7 @@ export default function AddTransactionScreen() {
                   <View style={{ alignItems: "flex-end", gap: 6 }}>
                     <Text
                       style={{
-                        color: isIncome
-                          ? successColor
-                          : theme.colors.error,
+                        color: isIncome ? successColor : theme.colors.error,
                         fontWeight: "800",
                       }}
                     >
