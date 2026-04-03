@@ -43,8 +43,6 @@ import { toMonthKey } from "@/src/utils/date";
 import { formatMoney } from "@/src/utils/money";
 import dayjs from "dayjs";
 
-// ── أيقونة + لون لكل نوع معاملة ──────────────────────────────
-
 // ── هوك لـ staggered animation ─────────────────────────────────
 function useStaggeredAnim(count: number, trigger: unknown) {
   const anims = useRef(
@@ -83,6 +81,7 @@ export default function DashboardScreen() {
 
   const isFocused = useIsFocused();
   const router = useRouter();
+
   type ExtraColors = {
     success?: string;
     onSuccess?: string;
@@ -111,18 +110,40 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const fabVisibleRef = useRef(true);
 
+  // ── الثوابت ────────────────────────────────────────────────
   const HEADER_EXPANDED_H = 310;
   const HEADER_COLLAPSED_H = 140;
   const SCROLL_GAP_BELOW_HEADER = 20;
-  /** Past this offset → run collapse animation (state-based, not pixel-linked). */
+  /**
+   * Past this offset → trigger collapse animation (state-based, NOT pixel-linked).
+   * The animation is edge-triggered (fires once when crossing) not per-frame.
+   */
   const HEADER_COLLAPSE_THRESHOLD = 50;
-  /** Expand only when scrolled to the top (tolerate float / sub-pixel). */
+  /**
+   * Expand only when scrolled back to the absolute top.
+   * Small epsilon tolerates float / sub-pixel rounding.
+   */
   const SCROLL_TOP_EPSILON = 1;
 
-  /** 0 = expanded, 1 = collapsed — animated with timing, not tied to scroll position. */
+  /**
+   * 0 = expanded, 1 = collapsed.
+   * Driven by a one-shot Animated.timing, NOT tied to scroll pixels.
+   * This is the fix: decoupling layout from scroll avoids the
+   * "shrink header → contentSize changes → scroll event → expand header → loop" bug.
+   */
   const headerCollapse = useRef(new Animated.Value(0)).current;
-  const headerAnimatingRef = useRef(false);
+
+  /**
+   * Ref (not state) so reads/writes inside onScroll are synchronous and
+   * never cause a re-render.
+   */
   const headerCollapsedRef = useRef(false);
+  /**
+   * Prevents a new animation from firing while one is already running.
+   * Without this, rapid scrolling around the threshold would restart
+   * the timing animation on every frame.
+   */
+  const headerTransitionLockRef = useRef(false);
 
   const settings = useSettingsStore((s) => s.settings);
   const summary = useDashboardStore((s) => s.summary);
@@ -336,8 +357,7 @@ export default function DashboardScreen() {
     if (isFocused) setFocusTick((v) => v + 1);
   }, [isFocused]);
 
-  // ── أنيميشن ────────────────────────────────────────────────
-  // أنيميشن الهيدر عند mount
+  // ── أنيميشن الهيدر عند mount ───────────────────────────────
   useEffect(() => {
     Animated.parallel([
       Animated.spring(headerAnim, {
@@ -355,7 +375,7 @@ export default function DashboardScreen() {
     ]).start();
   }, []);
 
-  // أنيميشن الكروت عند تغيير اليوم
+  // ── أنيميشن الكروت عند تغيير اليوم ───────────────────────
   useEffect(() => {
     fadeAnim.setValue(0);
     cardAnims.forEach((a) => a.setValue(0));
@@ -390,9 +410,10 @@ export default function DashboardScreen() {
     ],
   });
 
+  // ── lastScrollY ref ────────────────────────────────────────
   const lastScrollYRef = useRef(0);
-  const headerTransitionLockRef = useRef(false);
 
+  // ── FAB visibility ─────────────────────────────────────────
   const onScrollFab = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
@@ -408,20 +429,69 @@ export default function DashboardScreen() {
     [],
   );
 
+  /**
+   * ══════════════════════════════════════════════════════════
+   * onScroll — الإصلاح الجوهري
+   * ══════════════════════════════════════════════════════════
+   *
+   * المشكلة القديمة (الـ jitter loop):
+   *   paddingTop متحرك مع headerCollapse
+   *   → لما الهيدر يتصغر، الـ contentSize بيتغير
+   *   → الـ ScrollView بيحسب scroll offset جديد
+   *   → onScroll بيتفير بـ y مختلف
+   *   → الهيدر بيعكس حالته
+   *   → loop لا نهائي ∞
+   *
+   * الحل:
+   *   ١. paddingTop في الـ ScrollView ثابت دايمًا = HEADER_EXPANDED_H + GAP
+   *      (الـ ScrollView مش بيحس بأي تغيير في حجم الهيدر)
+   *   ٢. الأنيميشن edge-triggered: بتشتغل مرة واحدة عند عبور الـ threshold
+   *      مش per-frame
+   *   ٣. lastScrollYRef بيتحدث أول حاجة قبل أي فحص
+   *   ٤. headerTransitionLockRef يحمي الـ collapse كمان مش بس الـ expand
+   *   ٥. return بعد الـ collapse يمنع تقييم الـ expand في نفس الفريم
+   */
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = e.nativeEvent.contentOffset.y;
       const lastY = lastScrollYRef.current;
+
+      // ① دايمًا حدّث الـ ref أولاً قبل أي منطق
+      lastScrollYRef.current = y;
+
+      // ② FAB visibility (مستقل عن الهيدر)
       onScrollFab(e);
 
-      // Expand at top: only while collapsed; lock prevents restarting timing every frame at y≈0.
+      // ③ Collapse: edge-triggered عند عبور الـ threshold للأسفل
+      //    الشرط: كنا تحت الـ threshold وعدينا فوقه، ومش متحول بالفعل، ومفيش lock
+      if (
+        y > HEADER_COLLAPSE_THRESHOLD &&
+        lastY <= HEADER_COLLAPSE_THRESHOLD &&
+        !headerCollapsedRef.current &&
+        !headerTransitionLockRef.current
+      ) {
+        headerCollapsedRef.current = true;
+        headerTransitionLockRef.current = true;
+        Animated.timing(headerCollapse, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start(() => {
+          headerTransitionLockRef.current = false;
+        });
+        return; // ← امنع تقييم الـ expand في نفس الفريم
+      }
+
+      // ④ Expand: فقط لما نرجع للأعلى تمامًا (y ≈ 0)
+      //    الشرط: وصلنا الـ top، والهيدر متصغر حاليًا، ومفيش lock
       if (
         y <= SCROLL_TOP_EPSILON &&
         headerCollapsedRef.current &&
         !headerTransitionLockRef.current
       ) {
-        headerTransitionLockRef.current = true;
         headerCollapsedRef.current = false;
+        headerTransitionLockRef.current = true;
         Animated.timing(headerCollapse, {
           toValue: 0,
           duration: 320,
@@ -430,22 +500,7 @@ export default function DashboardScreen() {
         }).start(() => {
           headerTransitionLockRef.current = false;
         });
-      } else if (
-        lastY <= HEADER_COLLAPSE_THRESHOLD &&
-        y > HEADER_COLLAPSE_THRESHOLD &&
-        !headerCollapsedRef.current
-      ) {
-        // Collapse: edge-triggered past threshold (no per-pixel binding). Can interrupt expand.
-        headerCollapsedRef.current = true;
-        Animated.timing(headerCollapse, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }).start();
       }
-
-      lastScrollYRef.current = y;
     },
     [headerCollapse, onScrollFab],
   );
@@ -464,29 +519,35 @@ export default function DashboardScreen() {
     },
   ];
 
+  // ── Header animated interpolations ────────────────────────
   const headerHeightAnim = headerCollapse.interpolate({
     inputRange: [0, 1],
     outputRange: [HEADER_EXPANDED_H, HEADER_COLLAPSED_H],
   });
 
-  const scrollPaddingTopAnim = headerCollapse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [
-      HEADER_EXPANDED_H + SCROLL_GAP_BELOW_HEADER,
-      HEADER_COLLAPSED_H + SCROLL_GAP_BELOW_HEADER,
-    ],
-  });
-
   // ══════════════════════════════════════════════════════════
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      {/* Full-screen scroll; paddingTop animates with headerCollapse (state), not scroll pixels — overlay header avoids flex reflow loops. */}
+      {/*
+       * ── ScrollView ──
+       *
+       * paddingTop ثابت = HEADER_EXPANDED_H + GAP
+       * ده هو قلب الإصلاح: الـ ScrollView مش بيعرفش أن الهيدر اتغير حجمه.
+       * لو خلينا الـ paddingTop يتحرك مع headerCollapse، الـ contentSize
+       * هيتغير مع كل frame من الأنيميشن وهيعمل scroll event وهيحصل jitter.
+       *
+       * الهيدر overlay فوق الـ ScrollView بالـ position: absolute،
+       * فالـ content بيبدأ من تحته بالـ paddingTop الثابت.
+       *)
+      */}
       <Animated.ScrollView
         style={styles.scrollFill}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: scrollPaddingTopAnim },
+          {
+            paddingTop: HEADER_EXPANDED_H + SCROLL_GAP_BELOW_HEADER,
+          },
         ]}
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -904,7 +965,6 @@ export default function DashboardScreen() {
                 new Date(item.occurredAt).toLocaleDateString(locale),
               ].filter(Boolean);
 
-              const txAnim = new Animated.Value(0);
               return (
                 <Animated.View
                   key={item.id}
@@ -997,7 +1057,14 @@ export default function DashboardScreen() {
         </View>
       </Animated.ScrollView>
 
-      {/* Header overlays scroll — height does not resize the ScrollView, avoiding scroll offset ↔ height feedback. */}
+      {/*
+       * ── Header Overlay ──
+       *
+       * position: absolute فوق الـ ScrollView.
+       * الهيدر مش جزء من الـ flex tree بتاع الـ ScrollView،
+       * فتغيير حجمه مش بيأثر على الـ contentSize ومش بيعمل scroll events.
+       *)
+      */}
       <Animated.View
         pointerEvents="box-none"
         style={[
@@ -1109,6 +1176,12 @@ export default function DashboardScreen() {
               />
             </Animated.View>
 
+            {/*
+             * المحتوى اللي بيختفي عند الـ collapse (day picker + limit bar + summary cards).
+             * opacity + translateY مرتبطين بـ headerCollapse بس مش بيأثروا على الـ layout
+             * بتاع الـ ScrollView لأن الهيدر overlay.
+             *)
+            */}
             <Animated.View
               style={{
                 opacity: headerCollapse.interpolate({
@@ -1336,7 +1409,6 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 8,
     gap: 14,
-    // تأثير shadow تحت الهيدر
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
@@ -1420,6 +1492,7 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 16,
     paddingBottom: 160,
+    // paddingTop بيتحدد inline بقيمة ثابتة = HEADER_EXPANDED_H + SCROLL_GAP_BELOW_HEADER
   },
 
   // ── Cards ──
