@@ -84,6 +84,17 @@
     "amount": "Amount",
     "description": "Description",
     "notes": "Notes",
+    "balanceAdjustment": "Balance adjustment",
+    "addBudget": "Add Budget",
+    "editBudget": "Edit Budget",
+    "deleteBudget": "Delete Budget",
+    "deleteBudgetConfirm": "This budget will be removed.",
+    "selectCategory": "Select Category",
+    "budgetAmount": "Budget amount",
+    "budgetSpent": "Spent",
+    "budgetRemaining": "Remaining",
+    "noBudget": "No budget",
+    "saveBudget": "Save Budget",
     "save": "Save"
   },
   "settings": {

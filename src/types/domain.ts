@@ -76,6 +76,15 @@ export interface Account {
   updatedAt: string;
 }
 
+export interface Budget {
+  id: number;
+  categoryId: number;
+  amount: number;
+  lastNotifiedMonth: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GoalTransaction {
   id: number;
   goalId: number;

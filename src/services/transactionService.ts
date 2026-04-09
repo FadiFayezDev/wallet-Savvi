@@ -3,10 +3,11 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { getAll, getFirst, runInTransaction, runQuery } from '@/src/db/client';
 import { settingsService } from '@/src/services/settingsService';
 import { accountService } from '@/src/services/accountService';
+import { budgetService } from '@/src/services/budgetService';
 import { dailySummaryService } from '@/src/services/dailySummaryService'; // افترضنا وجوده
 import type { CreateTransactionInput, UpdateTransactionInput } from '@/src/types/dto';
 import type { Transaction, TransactionKind } from '@/src/types/domain';
-import { nowIso } from '@/src/utils/date';
+import { nowIso, toMonthKey } from '@/src/utils/date';
 import { assertPositiveAmount } from '@/src/utils/validation';
 
 interface TransactionRow {
@@ -88,7 +89,48 @@ async function maybeSendSpendingAlert(amount: number) {
   });
 }
 
+async function maybeSendBudgetAlert(
+  categoryId: number,
+  occurredAt: string,
+  dbArg?: SQLiteDatabase,
+) {
+  const budget = await budgetService.getBudgetByCategory(categoryId, dbArg);
+  if (!budget) return;
+  const monthKey = toMonthKey(occurredAt);
+  if (budget.lastNotifiedMonth === monthKey) return;
+
+  const spent = await budgetService.getCategorySpendForMonth(
+    categoryId,
+    monthKey,
+    dbArg,
+  );
+  if (spent < budget.amount) return;
+
+  const settings = await settingsService.getSettings();
+  const isArabic = (settings?.locale ?? 'ar').toLowerCase().startsWith('ar');
+  const title = isArabic ? 'تنبيه الميزانية' : 'Budget Alert';
+  const body = isArabic
+    ? 'وصلت لحد الميزانية لهذه الفئة.'
+    : 'You have reached the budget for this category.';
+
+  await Notifications.scheduleNotificationAsync({
+    content: { title, body },
+    trigger: null,
+  });
+
+  await budgetService.setLastNotifiedMonth(categoryId, monthKey, dbArg);
+}
+
 export const transactionService = {
+  async listTransactionsByAccount(accountId: number): Promise<Transaction[]> {
+    const rows = await getAll<TransactionRow>(
+      `SELECT * FROM transactions
+       WHERE is_deleted = 0 AND account_id = ?
+       ORDER BY occurred_at DESC, id DESC;`,
+      [accountId],
+    );
+    return rows.map(mapTransaction);
+  },
   async createTransaction(input: CreateTransactionInput) {
     assertPositiveAmount(input.amount);
 
@@ -143,6 +185,13 @@ export const transactionService = {
       if (input.kind === 'expense') {
         await maybeSendSpendingAlert(amount);
       }
+
+      if (
+        input.categoryId &&
+        ['expense', 'bill_payment', 'work_expense'].includes(input.kind)
+      ) {
+        await maybeSendBudgetAlert(input.categoryId, input.occurredAt, db);
+      }
     });
   },
 
@@ -193,6 +242,13 @@ export const transactionService = {
     // Update Daily Summary
     if (['expense', 'bill_payment', 'work_expense'].includes(input.kind)) {
         await dailySummaryService.updateDailySummary(input.occurredAt, dbArg);
+    }
+
+    if (
+      input.categoryId &&
+      ['expense', 'bill_payment', 'work_expense'].includes(input.kind)
+    ) {
+      await maybeSendBudgetAlert(input.categoryId, input.occurredAt, dbArg);
     }
 
     return typedResult.lastInsertRowId ?? 0;
@@ -368,6 +424,17 @@ export const transactionService = {
 
       if (['expense', 'bill_payment', 'work_expense'].includes(current.kind)) {
         await dailySummaryService.updateDailySummary(input.occurredAt ?? current.occurred_at, db);
+      }
+
+      const nextCategoryId = typeof input.categoryId === 'number'
+        ? input.categoryId
+        : current.category_id;
+      const nextOccurredAt = input.occurredAt ?? current.occurred_at;
+      if (
+        nextCategoryId &&
+        ['expense', 'bill_payment', 'work_expense'].includes(current.kind)
+      ) {
+        await maybeSendBudgetAlert(nextCategoryId, nextOccurredAt, db);
       }
     });
   },

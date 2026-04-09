@@ -159,7 +159,7 @@ export default function GoalsTab() {
 
   return (
     <MaterialScreen title={t("tabs.goals")} layout="tab">
-      <Card mode="elevated" elevation={1} style={{ borderRadius: theme.roundness * 2 }}>
+      <Card mode="elevated" elevation={1} className='py-3 mb-8 ' style={{ borderRadius: theme.roundness * 2 }}>
         <Card.Content style={styles.formInner}>
           <Text variant="titleMedium" style={[styles.formTitle, { color: theme.colors.onSurface }]}>
             {t("goals.newGoal")}
@@ -196,7 +196,7 @@ export default function GoalsTab() {
         </Card.Content>
       </Card>
 
-      <View style={styles.list}>
+      <View style={styles.list} className="overflow-auto">
         {safeGoals.length === 0 ? (
           <EmptyState title={t("common.noData")} />
         ) : (

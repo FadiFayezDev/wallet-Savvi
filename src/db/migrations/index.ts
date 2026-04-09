@@ -370,6 +370,20 @@ SET balance = (SELECT balance FROM app_settings WHERE id = 1)
 WHERE is_default = 1;
 `;
 
+const migration009 = `
+CREATE TABLE IF NOT EXISTS budgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category_id INTEGER NOT NULL UNIQUE,
+  amount REAL NOT NULL CHECK (amount > 0),
+  last_notified_month TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, name: '001_init', sql: migration001 },
   { version: 2, name: '002_indexes', sql: migration002 },
@@ -379,4 +393,5 @@ export const migrations: Migration[] = [
   { version: 6, name: '006_custom_themes', sql: migration006 },
   { version: 7, name: '007_palette_themes', sql: migration007 },
   { version: 8, name: '008_accounts', sql: migration008 },
+  { version: 9, name: '009_budgets', sql: migration009 },
 ];

@@ -194,7 +194,7 @@ export default function CategoriesTabScreen({
 
   return (
     <MaterialScreen layout="tab">
-      <View style={styles.titleRow}>
+      <View style={styles.titleRow} className="mb-4">
         <Text
           variant="headlineSmall"
           style={[styles.title, { color: theme.colors.onSurface }]}
@@ -219,6 +219,7 @@ export default function CategoriesTabScreen({
 
       {/* ── Tabs بـ animated indicator ── */}
       <View
+        className="mb-6"
         style={[
           styles.tabsWrap,
           { backgroundColor: theme.colors.surfaceVariant },
@@ -281,6 +282,7 @@ export default function CategoriesTabScreen({
 
       {/* ── فورم ── */}
       <Surface
+        className="mb-6"
         elevation={0}
         style={[
           styles.formCard,

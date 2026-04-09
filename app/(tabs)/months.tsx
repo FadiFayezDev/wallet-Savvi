@@ -1,18 +1,32 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Card, IconButton, Menu, SegmentedButtons, Text, useTheme } from "react-native-paper";
+import {
+  Button,
+  Card,
+  IconButton,
+  Menu,
+  Modal,
+  Portal,
+  ProgressBar,
+  SegmentedButtons,
+  Text,
+  TextInput,
+  useTheme,
+} from "react-native-paper";
 import dayjs from "dayjs";
 
 import { EmptyState } from "@/src/components/common/EmptyState";
+import { ComboSelect } from "@/src/components/forms/ComboSelect";
 import { MATERIAL_H } from "@/src/components/layout/MaterialScreen";
 import { accountService } from "@/src/services/accountService";
+import { budgetService } from "@/src/services/budgetService";
 import { categoryService } from "@/src/services/categoryService";
 import { reportService } from "@/src/services/reportService";
 import { useSettingsStore } from "@/src/stores/settingsStore";
-import type { Account, Category, MonthlyReport } from "@/src/types/domain";
+import type { Account, Budget, Category, MonthlyReport } from "@/src/types/domain";
 import { formatMoney } from "@/src/utils/money";
 import { toMonthKey } from "@/src/utils/date";
 import { ACCOUNT_GROUPS } from "@/src/constants/accountGroups";
@@ -31,6 +45,8 @@ export default function ToolsScreen() {
   const [activeTab, setActiveTab] = useState<ToolsTab>("account");
   const [menuVisible, setMenuVisible] = useState(false);
   const [accountActionMode, setAccountActionMode] = useState<AccountActionMode>("none");
+  const [budgetDialogVisible, setBudgetDialogVisible] = useState(false);
+  const [budgetEditCategoryId, setBudgetEditCategoryId] = useState<number | null>(null);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -46,57 +62,75 @@ export default function ToolsScreen() {
         <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, flex: 1 }}>
           {t("tools.title")}
         </Text>
-        <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
-          anchor={
-            <IconButton
-              icon="dots-vertical"
-              size={22}
-              iconColor={theme.colors.onSurfaceVariant}
-              onPress={() => setMenuVisible(true)}
+        {activeTab === "account" ? (
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon="dots-vertical"
+                size={22}
+                iconColor={theme.colors.onSurfaceVariant}
+                onPress={() => setMenuVisible(true)}
+              />
+            }
+            contentStyle={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: 16,
+              paddingVertical: 6,
+              borderWidth: 1,
+              borderColor: theme.colors.outlineVariant,
+            }}
+          >
+            <Menu.Item
+              title={t("tools.createAccount")}
+              onPress={() => {
+                setMenuVisible(false);
+                setActiveTab("account");
+                setAccountActionMode("none");
+                router.push("/accounts/create");
+              }}
             />
-          }
-          contentStyle={{
-            backgroundColor: theme.colors.surface,
-            borderRadius: 16,
-            paddingVertical: 6,
-            borderWidth: 1,
-            borderColor: theme.colors.outlineVariant,
-          }}
-        >
-          <Menu.Item
-            title={t("tools.createAccount")}
+            <Menu.Item
+              title={t("tools.updateAccount")}
+              onPress={() => {
+                setMenuVisible(false);
+                setActiveTab("account");
+                setAccountActionMode("edit");
+              }}
+            />
+            <Menu.Item
+              title={t("tools.deleteAccount")}
+              onPress={() => {
+                setMenuVisible(false);
+                setActiveTab("account");
+                setAccountActionMode("delete");
+              }}
+            />
+          </Menu>
+        ) : activeTab === "budget" ? (
+          <IconButton
+            icon="plus"
+            size={22}
+            iconColor={theme.colors.primary}
             onPress={() => {
-              setMenuVisible(false);
-              setActiveTab("account");
-              setAccountActionMode("none");
-              router.push("/accounts/create");
+              setBudgetEditCategoryId(null);
+              setBudgetDialogVisible(true);
             }}
           />
-          <Menu.Item
-            title={t("tools.updateAccount")}
-            onPress={() => {
-              setMenuVisible(false);
-              setActiveTab("account");
-              setAccountActionMode("edit");
-            }}
-          />
-          <Menu.Item
-            title={t("tools.deleteAccount")}
-            onPress={() => {
-              setMenuVisible(false);
-              setActiveTab("account");
-              setAccountActionMode("delete");
-            }}
-          />
-        </Menu>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       <View style={{ paddingHorizontal: MATERIAL_H, marginTop: 12 }}>
         <SegmentedButtons
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as ToolsTab)}
+          onValueChange={(v) => {
+            const next = v as ToolsTab;
+            setActiveTab(next);
+            if (next !== "account") setMenuVisible(false);
+          }}
           buttons={[
             { value: "budget", label: t("tools.budget") },
             { value: "account", label: t("tools.account") },
@@ -106,7 +140,17 @@ export default function ToolsScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        {activeTab === "budget" ? <BudgetTab /> : null}
+        {activeTab === "budget" ? (
+          <BudgetTab
+            dialogVisible={budgetDialogVisible}
+            onDismissDialog={() => setBudgetDialogVisible(false)}
+            editCategoryId={budgetEditCategoryId}
+            onEditCategory={(id) => {
+              setBudgetEditCategoryId(id);
+              setBudgetDialogVisible(true);
+            }}
+          />
+        ) : null}
         {activeTab === "account" ? (
           <AccountTab
             actionMode={accountActionMode}
@@ -119,26 +163,233 @@ export default function ToolsScreen() {
   );
 }
 
-function BudgetTab() {
+function BudgetTab({
+  dialogVisible,
+  onDismissDialog,
+  editCategoryId,
+  onEditCategory,
+}: {
+  dialogVisible: boolean;
+  onDismissDialog: () => void;
+  editCategoryId: number | null;
+  onEditCategory: (id: number) => void;
+}) {
   const theme = useTheme<AppTheme>();
   const { t, i18n } = useTranslation();
+  const settings = useSettingsStore((state) => state.settings);
+  const locale = settings?.locale ?? "ar";
+  const currency = settings?.currencyCode ?? "EGP";
   const isAr = i18n.language.startsWith("ar");
+  const monthKey = toMonthKey(new Date());
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [spendMap, setSpendMap] = useState<Record<number, number>>({});
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [amountText, setAmountText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const budgetMap = useMemo(() => new Map(budgets.map((b) => [b.categoryId, b])), [budgets]);
+
+  const loadData = useCallback(async () => {
+    const [categoryRows, budgetRows, spendRows] = await Promise.all([
+      categoryService.listCategories("expense"),
+      budgetService.listBudgets(),
+      budgetService.listCategorySpendForMonth(monthKey),
+    ]);
+    setCategories(categoryRows);
+    setBudgets(budgetRows);
+    setSpendMap(spendRows);
+  }, [monthKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData().catch(() => {
+        setCategories([]);
+        setBudgets([]);
+        setSpendMap({});
+      });
+    }, [loadData]),
+  );
+
+  useEffect(() => {
+    if (!dialogVisible) return;
+    if (editCategoryId) {
+      const existing = budgetMap.get(editCategoryId);
+      setSelectedCategoryId(editCategoryId);
+      setAmountText(existing ? String(existing.amount) : "");
+      return;
+    }
+    const first = categories[0]?.id ?? null;
+    setSelectedCategoryId(first);
+    setAmountText("");
+  }, [dialogVisible, editCategoryId, categories, budgetMap]);
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((c) => ({
+        value: c.id,
+        label: locale === "ar" ? c.nameAr : c.nameEn,
+      })),
+    [categories, locale],
+  );
+
+  const onSave = async () => {
+    if (!selectedCategoryId) {
+      Alert.alert(isAr ? "اختر الفئة" : "Select a category");
+      return;
+    }
+    const amount = Number(amountText);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      Alert.alert(isAr ? "ادخل مبلغ صحيح" : "Enter a valid amount");
+      return;
+    }
+    setSaving(true);
+    try {
+      await budgetService.upsertBudget(selectedCategoryId, amount);
+      await loadData();
+      onDismissDialog();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onDelete = async () => {
+    if (!selectedCategoryId) return;
+    const ok = await confirmAction({
+      title: t("tools.deleteBudget"),
+      message: t("tools.deleteBudgetConfirm"),
+      confirmText: t("tools.delete"),
+    });
+    if (!ok) return;
+    setSaving(true);
+    try {
+      await budgetService.deleteBudget(selectedCategoryId);
+      await loadData();
+      onDismissDialog();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{ paddingHorizontal: MATERIAL_H, paddingTop: 12, paddingBottom: 72 }}
     >
-      <Card mode="elevated" elevation={1} style={{ borderRadius: theme.roundness * 2 }}>
-        <Card.Content style={{ gap: 8 }}>
-          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-            {t("tools.budget")}
+      {categories.length === 0 ? (
+        <EmptyState title={t("common.noData")} />
+      ) : (
+        <View style={{ gap: 12 }}>
+          {categories.map((cat) => {
+            const budget = budgetMap.get(cat.id) ?? null;
+            const spent = spendMap[cat.id] ?? 0;
+            const remaining = budget ? Math.max(budget.amount - spent, 0) : null;
+            const progress = budget ? Math.min(spent / budget.amount, 1) : 0;
+            const name = locale === "ar" ? cat.nameAr : cat.nameEn;
+            const isOver = budget ? spent >= budget.amount : false;
+            const progressColor = isOver ? theme.colors.error : theme.colors.primary;
+
+            return (
+              <Pressable
+                key={cat.id}
+                onPress={() => onEditCategory(cat.id)}
+                style={{
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outlineVariant,
+                  backgroundColor: theme.colors.surface,
+                  padding: 14,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.onSurface }}>
+                    {name}
+                  </Text>
+                  {budget ? (
+                    <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                      {formatMoney(budget.amount, locale, currency)}
+                    </Text>
+                  ) : (
+                    <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                      {t("tools.noBudget")}
+                    </Text>
+                  )}
+                </View>
+
+                <View style={{ marginTop: 8 }}>
+                  <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                    {t("tools.budgetSpent")}: {formatMoney(spent, locale, currency)}
+                  </Text>
+                  {budget ? (
+                    <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                      {t("tools.budgetRemaining")}: {formatMoney(remaining ?? 0, locale, currency)}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {budget ? (
+                  <View style={{ marginTop: 10 }}>
+                    <ProgressBar progress={progress} color={progressColor} />
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      <Portal>
+        <Modal
+          visible={dialogVisible}
+          onDismiss={onDismissDialog}
+          contentContainerStyle={{
+            marginHorizontal: 16,
+            borderRadius: 20,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.outlineVariant,
+            padding: 16,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "800", color: theme.colors.onSurface }}>
+            {editCategoryId ? t("tools.editBudget") : t("tools.addBudget")}
           </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            {isAr ? "الميزة قيد التطوير في هذا الإصدار." : "This section is coming soon in this release."}
-          </Text>
-        </Card.Content>
-      </Card>
+
+          <View style={{ marginTop: 12 }}>
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 6 }}>
+              {t("tools.selectCategory")}
+            </Text>
+            <ComboSelect
+              placeholder={isAr ? "اختر" : "Select"}
+              value={selectedCategoryId ?? undefined}
+              options={categoryOptions}
+              onChange={(value) => setSelectedCategoryId(value)}
+            />
+          </View>
+
+          <View style={{ marginTop: 12 }}>
+            <TextInput
+              mode="outlined"
+              keyboardType="numeric"
+              value={amountText}
+              onChangeText={setAmountText}
+              placeholder={t("tools.budgetAmount")}
+            />
+          </View>
+
+          <View style={{ marginTop: 16, flexDirection: "row", gap: 10 }}>
+            <Button mode="contained" onPress={onSave} loading={saving} style={{ flex: 1 }}>
+              {t("tools.saveBudget")}
+            </Button>
+            {editCategoryId ? (
+              <Button mode="outlined" onPress={onDelete} disabled={saving}>
+                {t("tools.delete")}
+              </Button>
+            ) : null}
+          </View>
+        </Modal>
+      </Portal>
     </ScrollView>
   );
 }

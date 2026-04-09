@@ -84,6 +84,17 @@
     "amount": "المبلغ",
     "description": "الوصف",
     "notes": "ملاحظات",
+    "balanceAdjustment": "تعديل رصيد الحساب",
+    "addBudget": "إضافة ميزانية",
+    "editBudget": "تعديل الميزانية",
+    "deleteBudget": "حذف الميزانية",
+    "deleteBudgetConfirm": "سيتم حذف هذه الميزانية.",
+    "selectCategory": "اختر الفئة",
+    "budgetAmount": "مبلغ الميزانية",
+    "budgetSpent": "المصروف",
+    "budgetRemaining": "المتبقي",
+    "noBudget": "لا توجد ميزانية",
+    "saveBudget": "حفظ الميزانية",
     "save": "حفظ"
   },
   "settings": {

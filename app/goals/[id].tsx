@@ -129,6 +129,7 @@ export default function GoalDetailsScreen() {
       await goalService.updateGoal(goalId, {
         name: name.trim(),
         targetAmount: target,
+        id: 0
       });
       await loadDetails();
       Alert.alert("Goal updated");

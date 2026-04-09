@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import InfiniteDayPicker from "@/src/components/FlatList/InfiniteDayPicker";
 import { AnimatedBalanceText } from "@/src/components/common/AnimatedBalanceText";
+import { ACCOUNT_GROUPS } from "@/src/constants/accountGroups";
 import { accountService } from "@/src/services/accountService";
 import { recurringBillService } from "@/src/services/recurringBillService";
 import { transactionService } from "@/src/services/transactionService";
@@ -78,6 +79,9 @@ export default function DashboardScreen() {
   const [dayLoading, setDayLoading] = useState(false);
   const [focusTick, setFocusTick] = useState(0);
   const [fabVisible, setFabVisible] = useState(true);
+  const [balancePagerWidth, setBalancePagerWidth] = useState(0);
+  const [balancePageIndex, setBalancePageIndex] = useState(0);
+  const balancePagerRef = useRef<Animated.ScrollView>(null);
 
   const isFocused = useIsFocused();
   const router = useRouter();
@@ -162,6 +166,49 @@ export default function DashboardScreen() {
   const headerTextMuted = withAlpha(headerText, 0.55);
   const headerGlass = withAlpha(headerText, 0.08);
   const headerBorder = withAlpha(headerText, 0.12);
+
+  const balancePages = useMemo(() => {
+    const pages: { key: string; label: string; value: number }[] = [];
+    pages.push({
+      key: "total",
+      label: isArabic ? "إجمالي الرصيد" : "Total Balance",
+      value: summary?.balance ?? 0,
+    });
+
+    if (accounts.length === 0) return pages;
+
+    const groupTotals = new Map<
+      string,
+      { total: number; count: number }
+    >();
+    for (const account of accounts) {
+      const prev = groupTotals.get(account.groupKey) ?? { total: 0, count: 0 };
+      prev.total += account.balance;
+      prev.count += 1;
+      groupTotals.set(account.groupKey, prev);
+    }
+
+    const orderedGroups = [...ACCOUNT_GROUPS].sort(
+      (a, b) => a.order - b.order,
+    );
+    for (const group of orderedGroups) {
+      const agg = groupTotals.get(group.key);
+      if (!agg || agg.count === 0) continue;
+      if (agg.total === 0) continue;
+      pages.push({
+        key: `group-${group.key}`,
+        label: isArabic ? `رصيد ${group.labelAr}` : `${group.labelEn} Balance`,
+        value: agg.total,
+      });
+    }
+
+    return pages;
+  }, [accounts, isArabic, summary?.balance]);
+
+  useEffect(() => {
+    setBalancePageIndex(0);
+    balancePagerRef.current?.scrollTo({ x: 0, animated: false });
+  }, [balancePages.length]);
 
   const transactionKindMeta = useMemo(() => {
     const success = theme.colors.success ?? theme.colors.secondary;
@@ -1123,7 +1170,8 @@ export default function DashboardScreen() {
               </View>
 
               <Text style={[styles.balanceLabel, { color: headerTextMuted }]}>
-                {isArabic ? "إجمالي الرصيد" : "Total Balance"}
+                {balancePages[balancePageIndex]?.label ??
+                  (isArabic ? "إجمالي الرصيد" : "Total Balance")}
               </Text>
 
               <View style={styles.headerActions}>
@@ -1161,19 +1209,90 @@ export default function DashboardScreen() {
                 ],
               }}
             >
-              <AnimatedBalanceText
-                value={summary?.balance ?? 0}
-                locale={locale}
-                currency={currency}
-                resetKey={focusTick}
-                textStyle={[
-                  styles.balanceValue,
-                  {
-                    color: headerText,
-                    textShadowColor: withAlpha(headerText, 0.35),
-                  },
-                ]}
-              />
+              <View
+                style={styles.balancePager}
+                onLayout={(e) =>
+                  setBalancePagerWidth(e.nativeEvent.layout.width)
+                }
+              >
+                {balancePages.length <= 1 ? (
+                  <AnimatedBalanceText
+                    value={summary?.balance ?? 0}
+                    locale={locale}
+                    currency={currency}
+                    resetKey={focusTick}
+                    textStyle={[
+                      styles.balanceValue,
+                      {
+                        color: headerText,
+                        textShadowColor: withAlpha(headerText, 0.35),
+                      },
+                    ]}
+                  />
+                ) : (
+                  <>
+                    <Animated.ScrollView
+                      ref={balancePagerRef}
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      onMomentumScrollEnd={(e) => {
+                        const width = balancePagerWidth || 1;
+                        const nextIndex = Math.round(
+                          e.nativeEvent.contentOffset.x / width,
+                        );
+                        const clamped = Math.max(
+                          0,
+                          Math.min(nextIndex, balancePages.length - 1),
+                        );
+                        setBalancePageIndex(clamped);
+                      }}
+                      scrollEventThrottle={16}
+                    >
+                      {balancePages.map((page) => (
+                        <View
+                          key={page.key}
+                          style={[
+                            styles.balancePage,
+                            { width: balancePagerWidth || 1 },
+                          ]}
+                        >
+                          <AnimatedBalanceText
+                            value={page.value}
+                            locale={locale}
+                            currency={currency}
+                            resetKey={`${focusTick}-${page.key}`}
+                            textStyle={[
+                              styles.balanceValue,
+                              {
+                                color: headerText,
+                                textShadowColor: withAlpha(headerText, 0.35),
+                              },
+                            ]}
+                          />
+                        </View>
+                      ))}
+                    </Animated.ScrollView>
+                    <View style={styles.balanceDots}>
+                      {balancePages.map((page, index) => {
+                        const isActive = index === balancePageIndex;
+                        return (
+                          <View
+                            key={page.key}
+                            style={[
+                              styles.balanceDot,
+                              {
+                                backgroundColor: headerText,
+                                opacity: isActive ? 0.9 : 0.35,
+                              },
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
+              </View>
             </Animated.View>
 
             {/*
@@ -1428,6 +1547,25 @@ const styles = StyleSheet.create({
   },
   noMargin: { margin: 0 },
 
+  balancePager: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  balancePage: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  balanceDots: {
+    flexDirection: "row",
+    gap: 6,
+    alignSelf: "center",
+    marginTop: 6,
+  },
+  balanceDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+  },
   balanceLabel: {
     fontSize: 11,
     fontWeight: "700",
